@@ -1,0 +1,48 @@
+# Architecture Diagram
+
+```mermaid
+flowchart LR
+  repo[Repository files
+code/docs/schemas/tests] --> ingest[Ingest + parse
+stable IDs + sha256]
+  ingest --> pg[(PostgreSQL metadata DB)]
+
+  pg --> identity[files
+file_versions
+path_history]
+  pg --> graph[repo_nodes
+graph_edges
+lineage_edges]
+  pg --> gen[generated_artifacts
+artifact_dependencies
+refresh_runs]
+  pg --> ai[ai_runs
+model_costs
+verification_events]
+  pg --> query[query_runs
+explain_plans
+benchmark_runs]
+  pg --> vector[vector_index_entries
+rag_eval_runs]
+
+  ai --> verify[EXPLAIN / benchmark / replay
+human or rule verification]
+  query --> verify
+  verify --> decisions[accept / reject / needs review]
+
+  graph --> neo4j[(Optional Neo4j mirror
+for multi-hop workloads)]
+  pg --> router[Optional router / shard layer]
+  router --> shards[(Project shards / replicas)]
+  shards --> consensus[metadata_ranges
+leaseholders
+consensus_groups]
+
+  gen --> outputs[Generated JSONL / TSV / Mermaid / docs]
+  vector --> rag[RAG / semantic search]
+
+```
+
+## How to read it
+
+The center of the design is a PostgreSQL metadata database. Specialized systems such as Neo4j, vector stores, routers, shards, and consensus groups are optional later layers. This matches the main recommendation of the repository: model the data correctly first, then scale out with evidence.

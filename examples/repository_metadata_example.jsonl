@@ -1,0 +1,2 @@
+{"file_id": "file_001", "path": "src/catalog/papers.ts", "sha256": "d4e5...", "version": "2026-06-29T00:00:00Z", "language": "TypeScript", "node_type": "file"}
+{"file_id": "file_002", "path": "docs/architecture.mmd", "sha256": "a91b...", "version": "2026-06-29T00:00:00Z", "language": "Mermaid", "node_type": "generated_artifact"}

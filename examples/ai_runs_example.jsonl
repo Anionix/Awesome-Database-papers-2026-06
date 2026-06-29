@@ -1,0 +1,2 @@
+{"ai_run_id": "run_001", "task_type": "semantic_filter", "model_name": "small-fast-model", "cascade_stage": "small_model", "confidence": 0.82, "latency_ms": 410, "estimated_usd": 0.0009, "verified": false}
+{"ai_run_id": "run_002", "task_type": "semantic_filter", "model_name": "oracle-model", "cascade_stage": "oracle_model", "confidence": 0.97, "latency_ms": 2050, "estimated_usd": 0.012, "verified": true}

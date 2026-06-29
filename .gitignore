@@ -1,0 +1,14 @@
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Generated local files
+*.tmp
+*.log
+.cache/
+
+# Python scratch
+__pycache__/
+*.pyc
+.venv/

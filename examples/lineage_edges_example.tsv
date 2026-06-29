@@ -1,0 +1,4 @@
+src_node_id	dst_node_id	edge_type	source	confidence
+file_001	symbol_catalog_loader	defines	parser	1.0
+symbol_catalog_loader	query_run_001	generates_sql	parser	0.95
+query_run_001	artifact_selected_papers_json	generates	system	1.0
