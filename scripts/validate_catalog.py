@@ -4,14 +4,13 @@
 from __future__ import annotations
 
 import csv
-import importlib.util
 import json
 import pathlib
 import re
-import subprocess
 import sys
 from typing import Any
 
+import catalog_surface
 from catalog_contract import (
     BACKTICK_IDENTIFIER_RE,
     LAST_VERIFIED_RE,
@@ -36,46 +35,6 @@ def load_json(path: pathlib.Path) -> Any:
         return json.load(handle)
 
 
-def slugify(value: str) -> str:
-    return (
-        value.lower()
-        .replace("&", "and")
-        .replace("/", "-")
-        .replace(" ", "-")
-        .replace("_", "-")
-    )
-
-
-def iter_repo_files() -> list[str]:
-    # LLM contract: validate the committed repository surface, not whatever
-    # scratch files happen to exist in a contributor's checkout.
-    result = subprocess.run(
-        ["git", "ls-files"],
-        cwd=ROOT,
-        check=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-    )
-    return sorted(path for path in result.stdout.splitlines() if (ROOT / path).is_file())
-
-
-def expected_paper_note_paths(records: list[dict[str, Any]]) -> set[pathlib.Path]:
-    return {ROOT / "docs" / "paper-notes" / f"{slugify(record['company'])}.md" for record in records}
-
-
-def obsolete_paper_note_paths(records: list[dict[str, Any]]) -> list[pathlib.Path]:
-    # LLM contract: docs/paper-notes is generated catalog surface. Extra tracked
-    # notes are stale public pages and must fail validation.
-    expected = expected_paper_note_paths(records)
-    obsolete: list[pathlib.Path] = []
-    for rel_path in iter_repo_files():
-        path = ROOT / rel_path
-        if path.parent == ROOT / "docs" / "paper-notes" and path.suffix == ".md" and path not in expected:
-            obsolete.append(path)
-    return sorted(obsolete)
-
-
 def error(errors: list[str], message: str) -> None:
     errors.append(message)
 
@@ -88,18 +47,6 @@ def validate_schema_file(errors: list[str]) -> None:
     missing = set(REQUIRED_RECORD_FIELDS) - required
     if missing:
         error(errors, f"schema is missing required record fields: {sorted(missing)}")
-
-
-def load_generator_module(errors: list[str]) -> Any | None:
-    # Import the generator so validation checks the same sort/projection contract
-    # that `make generate` uses.
-    spec = importlib.util.spec_from_file_location("generate_catalog", ROOT / "scripts" / "generate_catalog.py")
-    if spec is None or spec.loader is None:
-        error(errors, "could not import scripts/generate_catalog.py")
-        return None
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
 
 
 def validate_records(records: Any, errors: list[str]) -> None:
@@ -184,14 +131,9 @@ def validate_csv(records: list[dict[str, Any]], errors: list[str]) -> None:
 
 
 def expected_manifest_files(records: list[dict[str, Any]], errors: list[str]) -> list[str] | None:
-    # Ask the generator for manifest expectations instead of duplicating its
-    # planned-output logic here.
-    module = load_generator_module(errors)
-    if module is None:
-        return None
-    outputs = module.build_outputs(records)
-    expected_manifest = json.loads(outputs[ROOT / "manifest.json"])
-    return sorted(expected_manifest.get("files", []))
+    # Ask the lower catalog surface for manifest expectations instead of
+    # duplicating its planned-output logic here.
+    return catalog_surface.expected_manifest_files(records)
 
 
 def validate_manifest(records: list[dict[str, Any]], errors: list[str], expected_files: list[str] | None = None) -> None:
@@ -202,9 +144,9 @@ def validate_manifest(records: list[dict[str, Any]], errors: list[str], expected
         error(errors, "manifest row_count does not match catalog length")
     if manifest.get("companies") != [record["company"] for record in records]:
         error(errors, "manifest companies do not match generated catalog order")
-    # LLM contract: compare manifest files against the generator's planned
+    # LLM contract: compare manifest files against the catalog surface's planned
     # repository surface, not raw checkout contents.
-    actual_files = expected_files if expected_files is not None else iter_repo_files()
+    actual_files = expected_files if expected_files is not None else catalog_surface.iter_repo_files()
     listed_files = sorted(manifest.get("files", []))
     if listed_files != actual_files:
         missing = sorted(set(actual_files) - set(listed_files))
@@ -214,14 +156,14 @@ def validate_manifest(records: list[dict[str, Any]], errors: list[str], expected
 
 def validate_paper_notes(records: list[dict[str, Any]], errors: list[str]) -> None:
     for record in records:
-        path = ROOT / "docs" / "paper-notes" / f"{slugify(record['company'])}.md"
+        path = catalog_surface.paper_note_path(record)
         if not path.exists():
             error(errors, f"missing paper note for {record['company']}: {path.relative_to(ROOT)}")
             continue
         text = path.read_text(encoding="utf-8")
         if not text.startswith(f"# {record['company']}\n"):
             error(errors, f"paper note heading mismatch: {path.relative_to(ROOT)}")
-    for path in obsolete_paper_note_paths(records):
+    for path in catalog_surface.obsolete_paper_note_paths(records):
         error(errors, f"obsolete paper note: {path.relative_to(ROOT)}")
 
 
@@ -286,14 +228,8 @@ def validate_catalog_schema_terms(records: list[dict[str, Any]], errors: list[st
 
 
 def validate_generated_views(records: list[dict[str, Any]], errors: list[str]) -> None:
-    module = load_generator_module(errors)
-    if module is None:
-        return
-    outputs = module.build_outputs(records)
-    for path, expected in outputs.items():
-        actual = path.read_text(encoding="utf-8") if path.exists() else None
-        if actual != expected:
-            error(errors, f"generated file is stale: {path.relative_to(ROOT)}")
+    for path in catalog_surface.stale_generated_view_paths(records):
+        error(errors, f"generated file is stale: {path}")
 
 
 def main() -> int:
@@ -304,11 +240,9 @@ def main() -> int:
     if isinstance(records, list):
         sorted_records = records
         if all(isinstance(record, dict) for record in records):
-            module = load_generator_module(errors)
-            if module is not None:
-                # Derived files are generated from sorted records even when the
-                # canonical JSON was edited in append order.
-                sorted_records = module.sort_records(records)
+            # Derived files are generated from sorted records even when the
+            # canonical JSON was edited in append order.
+            sorted_records = catalog_surface.sort_records(records)
         validate_csv(sorted_records, errors)
         validate_manifest(sorted_records, errors, expected_manifest_files(sorted_records, errors))
         validate_paper_notes(sorted_records, errors)
