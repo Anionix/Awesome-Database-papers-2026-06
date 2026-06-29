@@ -395,6 +395,8 @@ create table query_runs (
 create index query_runs_repo_status_idx on query_runs(repo_id, status, started_at desc);
 create index query_runs_source_idx on query_runs(source_node_id, started_at desc);
 
+-- code_to_sql_edges is declared with graph metadata, but its optional execution
+-- link must still be constrained once query_runs exists.
 alter table code_to_sql_edges
   add constraint code_to_sql_edges_query_run_fk
   foreign key (query_run_id) references query_runs(query_run_id);

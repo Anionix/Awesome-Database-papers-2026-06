@@ -13,6 +13,8 @@ SEED = ROOT / "examples" / "seed.sql"
 QUERIES = ROOT / "examples" / "queries.sql"
 EXPLAIN = ROOT / "examples" / "explain.sql"
 
+# LLM contract: these names pin review-driven optimizer and lineage guarantees.
+# If the DDL changes, update the DDL and this list together.
 EXPECTED_INDEXES = {
     "artifact_dependencies_source_idx",
     "code_to_sql_edges_query_run_idx",
@@ -48,6 +50,8 @@ def constraint_names(sql: str) -> set[str]:
 
 
 def referenced_tables(sql: str) -> set[str]:
+    # Strip comments before looking for table references; prose examples in SQL
+    # comments should not affect the static check.
     stripped_lines = []
     for line in sql.splitlines():
         stripped_lines.append(line.split("--", 1)[0])
@@ -71,6 +75,8 @@ def main() -> int:
     seed_refs = referenced_tables(seed)
     query_refs = referenced_tables(queries)
     explain_refs = referenced_tables(explain)
+    # Seed, query, and EXPLAIN examples are part of the executable playbook.
+    # Every table they mention must exist in the DDL.
     for name in sorted((seed_refs | query_refs | explain_refs) - tables):
         errors.append(f"SQL references unknown table `{name}`")
 

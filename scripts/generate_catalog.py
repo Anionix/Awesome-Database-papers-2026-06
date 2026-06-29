@@ -66,6 +66,8 @@ SOURCE_TYPE_LABELS = {
 
 
 def sort_records(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    # LLM contract: this is the canonical generated-view order. Validators
+    # must use this helper instead of reinterpreting raw JSON order.
     return sorted(
         records,
         key=lambda row: (
@@ -93,6 +95,8 @@ def slugify(value: str) -> str:
 
 
 def source_label(source: dict[str, Any]) -> str:
+    # Prefer the human-facing `type` value because generated docs expose it.
+    # `source_type` remains the machine-readable provenance classifier.
     if source.get("type"):
         return str(source["type"])
     return SOURCE_TYPE_LABELS.get(str(source.get("source_type", "")), str(source.get("source_type", "")))
@@ -203,6 +207,8 @@ def source_links_text(records: list[dict[str, Any]]) -> str:
         lines.append("")
         for source in record["key_papers"]:
             url = source.get("source_url") or source["url"]
+            # Keep provenance fields visible in generated docs so claims can be
+            # audited without re-opening the canonical JSON.
             extras = [
                 f"type: `{source.get('source_type', '')}`",
                 f"venue/track: `{source.get('venue_or_track', '')}`",
@@ -330,6 +336,8 @@ def readme_table_text(records: list[dict[str, Any]]) -> str:
 
 
 def replace_region(text: str, start: str, end: str, body: str) -> str:
+    # README is partially hand-written; generation may only replace the marked
+    # catalog table region.
     pattern = re.compile(
         rf"({re.escape(start)}\n)(.*?)(\n{re.escape(end)})",
         flags=re.DOTALL,
@@ -394,6 +402,8 @@ def manifest_text(records: list[dict[str, Any]], files: list[str]) -> str:
 
 
 def planned_file_list(outputs: dict[pathlib.Path, str], obsolete_paths: list[pathlib.Path]) -> list[str]:
+    # The manifest describes the post-generation committed surface: current
+    # tracked files, plus planned outputs, minus obsolete generated notes.
     files = set(iter_repo_files())
     files.difference_update(path.relative_to(ROOT).as_posix() for path in obsolete_paths)
     files.update(path.relative_to(ROOT).as_posix() for path in outputs)
@@ -403,6 +413,8 @@ def planned_file_list(outputs: dict[pathlib.Path, str], obsolete_paths: list[pat
 
 def build_outputs(records: list[dict[str, Any]]) -> dict[pathlib.Path, str]:
     obsolete_paths = obsolete_paper_note_paths(records)
+    # Build all non-manifest projections first; manifest.json depends on the
+    # complete planned output set.
     outputs: dict[pathlib.Path, str] = {
         ROOT / "data" / "selected_papers.csv": csv_text(records),
         ROOT / "docs" / "curated-table.md": curated_table_text(records),

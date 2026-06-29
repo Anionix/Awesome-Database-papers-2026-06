@@ -31,6 +31,8 @@ REQUIRED_RECORD_FIELDS = {
     "priority": str,
 }
 
+# LLM contract: these constants intentionally mirror
+# schemas/selected-paper.schema.json so validation has no optional dependency.
 REQUIRED_SOURCE_FIELDS = {
     "title": str,
     "url": str,
@@ -116,6 +118,8 @@ def validate_schema_file(errors: list[str]) -> None:
 
 
 def load_generator_module(errors: list[str]) -> Any | None:
+    # Import the generator so validation checks the same sort/projection contract
+    # that `make generate` uses.
     spec = importlib.util.spec_from_file_location("generate_catalog", ROOT / "scripts" / "generate_catalog.py")
     if spec is None or spec.loader is None:
         error(errors, "could not import scripts/generate_catalog.py")
@@ -136,6 +140,8 @@ def validate_records(records: Any, errors: list[str]) -> None:
             error(errors, f"record {index} is not an object")
             continue
         label = record.get("company", f"record {index}")
+        # Mirrors JSON Schema `additionalProperties: false`; extra catalog keys
+        # should be added deliberately, with generator/docs updates.
         extra_record_fields = sorted(set(record) - set(REQUIRED_RECORD_FIELDS))
         if extra_record_fields:
             error(errors, f"{label}: unexpected fields {extra_record_fields}")
@@ -160,6 +166,8 @@ def validate_records(records: Any, errors: list[str]) -> None:
             if not isinstance(source, dict):
                 error(errors, f"{label}: key_papers entries must be objects")
                 continue
+            # Mirrors JSON Schema `additionalProperties: false` for provenance
+            # records, while keeping this script stdlib-only.
             extra_source_fields = sorted(set(source) - set(REQUIRED_SOURCE_FIELDS))
             if extra_source_fields:
                 error(errors, f"{label}: source `{source.get('title', '?')}` unexpected fields {extra_source_fields}")
@@ -206,6 +214,8 @@ def validate_csv(records: list[dict[str, Any]], errors: list[str]) -> None:
 
 
 def expected_manifest_files(records: list[dict[str, Any]], errors: list[str]) -> list[str] | None:
+    # Ask the generator for manifest expectations instead of duplicating its
+    # planned-output logic here.
     module = load_generator_module(errors)
     if module is None:
         return None
@@ -262,6 +272,8 @@ def validate_examples(errors: list[str]) -> None:
 
 
 def validate_sources(records: list[dict[str, Any]], errors: list[str]) -> None:
+    # docs/source-links.md is generated. Its links must exactly reflect the
+    # canonical catalog, not a hand-curated subset.
     canonical_urls = {source["url"] for record in records for source in record["key_papers"]}
     source_links_text = (ROOT / "docs" / "source-links.md").read_text(encoding="utf-8")
     source_links_urls = set(re.findall(r"\]\((https://[^)]+)\)", source_links_text))
@@ -303,6 +315,7 @@ def ddl_schema_identifiers(ddl: str) -> set[str]:
 def validate_schema_objects(records: list[dict[str, Any]], errors: list[str]) -> None:
     ddl = (ROOT / "docs" / "repo-db-schema.sql").read_text(encoding="utf-8")
     tables = ddl_table_names(ddl)
+    # first_schema_objects names starter tables, not prose aliases.
     objects = {obj for record in records for obj in record["first_schema_objects"]}
     missing = sorted(objects - tables)
     if missing:
@@ -318,6 +331,8 @@ def validate_catalog_schema_terms(records: list[dict[str, Any]], errors: list[st
             value = record.get(field, "")
             if not isinstance(value, str):
                 continue
+            # Backticked schema-like words in public generated docs must be
+            # real DDL identifiers, not approximate names.
             for term in BACKTICK_IDENTIFIER_RE.findall(value):
                 if term not in identifiers:
                     error(errors, f"{label}: `{term}` in {field} is not defined by docs/repo-db-schema.sql")
@@ -344,6 +359,8 @@ def main() -> int:
         if all(isinstance(record, dict) for record in records):
             module = load_generator_module(errors)
             if module is not None:
+                # Derived files are generated from sorted records even when the
+                # canonical JSON was edited in append order.
                 sorted_records = module.sort_records(records)
         validate_csv(sorted_records, errors)
         validate_manifest(sorted_records, errors, expected_manifest_files(sorted_records, errors))
