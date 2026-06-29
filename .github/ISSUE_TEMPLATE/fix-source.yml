@@ -1,0 +1,24 @@
+name: Fix source
+description: Report stale, broken, or imprecise source metadata.
+title: "Fix source: "
+labels: ["sources"]
+body:
+  - type: input
+    id: current_url
+    attributes:
+      label: Current URL
+    validations:
+      required: true
+  - type: input
+    id: replacement_url
+    attributes:
+      label: Replacement URL
+    validations:
+      required: false
+  - type: textarea
+    id: issue
+    attributes:
+      label: Problem
+      description: Explain whether the source is broken, stale, mislabeled, or too weak for the claim.
+    validations:
+      required: true

@@ -19,7 +19,7 @@ Semantic SQL makes AI inference part of query execution. That means the reposito
 
 ## Repo / DB translation
 
-`ai_runs`, `model_cost`, `confidence`, `cascade_stage`, and `verified` should be stored alongside query and artifact metadata.
+`ai_runs`, `model_costs`, `confidence`, `cascade_stage`, and `verified` should be stored alongside query and artifact metadata.
 
 ## First schema objects
 

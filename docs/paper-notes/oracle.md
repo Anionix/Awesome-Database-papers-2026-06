@@ -19,7 +19,7 @@ Markdown, JSON, and YAML are convenient for authors but weak for joins, constrai
 
 ## Repo / DB translation
 
-Normalize `md`, `json`, and `yaml` into `schemas/*.schema.json`, relational tables, and dual document/relational views.
+Normalize raw documents into `docs`, parsed objects into `json_objects`, schema definitions into `schemas`, and dual views through `document_projection_map`.
 
 ## First schema objects
 

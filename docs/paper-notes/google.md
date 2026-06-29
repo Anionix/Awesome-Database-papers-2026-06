@@ -19,7 +19,7 @@ Repository metadata is historical by nature. Paths move, files rename, schemas e
 
 ## Repo / DB translation
 
-Use `file_id`, `path`, `sha256`, `version`, `valid_from`, `valid_to`, and `path_history` so metadata remains stable across renames and rebuilds.
+Use `file_id`, `path`, `sha256`, `version_id`, `valid_from`, `valid_to`, and `path_history` so metadata remains stable across renames and rebuilds.
 
 ## First schema objects
 
