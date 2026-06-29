@@ -50,8 +50,10 @@ VALID_CLAIM_SCOPES = {
     "company research page",
     "implementation interpretation source",
 }
+SCHEMA_TERM_FIELDS = ("repo_db_translation",)
 URL_RE = re.compile(r"^https://")
 LAST_VERIFIED_RE = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$")
+BACKTICK_IDENTIFIER_RE = re.compile(r"`([a-z][a-z0-9_]*)`")
 
 
 def load_json(path: pathlib.Path) -> Any:
@@ -273,13 +275,52 @@ def validate_sources(records: list[dict[str, Any]], errors: list[str]) -> None:
             error(errors, f"README missing company {record['company']}")
 
 
+def ddl_table_names(ddl: str) -> set[str]:
+    return set(re.findall(r"\bcreate\s+table\s+([a-z][a-z0-9_]*)\b", ddl, flags=re.IGNORECASE))
+
+
+def ddl_schema_identifiers(ddl: str) -> set[str]:
+    identifiers = set(ddl_table_names(ddl))
+    # LLM contract: catalog schema terms may name DDL tables or columns.
+    # Do not silently allow aliases like `model_cost` when the DDL says `model_costs`.
+    for _table_name, body in re.findall(
+        r"\bcreate\s+table\s+([a-z][a-z0-9_]*)\s*\((.*?)\n\);",
+        ddl,
+        flags=re.IGNORECASE | re.DOTALL,
+    ):
+        for raw_line in body.splitlines():
+            line = raw_line.split("--", 1)[0].strip().rstrip(",")
+            if not line:
+                continue
+            name = line.split(None, 1)[0]
+            if name in {"constraint", "primary", "foreign", "unique", "check"}:
+                continue
+            if re.fullmatch(r"[a-z][a-z0-9_]*", name):
+                identifiers.add(name)
+    return identifiers
+
+
 def validate_schema_objects(records: list[dict[str, Any]], errors: list[str]) -> None:
     ddl = (ROOT / "docs" / "repo-db-schema.sql").read_text(encoding="utf-8")
-    tables = set(re.findall(r"\bcreate\s+table\s+([a-z][a-z0-9_]*)\b", ddl, flags=re.IGNORECASE))
+    tables = ddl_table_names(ddl)
     objects = {obj for record in records for obj in record["first_schema_objects"]}
     missing = sorted(objects - tables)
     if missing:
         error(errors, f"catalog schema objects missing from DDL: {missing}")
+
+
+def validate_catalog_schema_terms(records: list[dict[str, Any]], errors: list[str]) -> None:
+    ddl = (ROOT / "docs" / "repo-db-schema.sql").read_text(encoding="utf-8")
+    identifiers = ddl_schema_identifiers(ddl)
+    for record in records:
+        label = record["company"]
+        for field in SCHEMA_TERM_FIELDS:
+            value = record.get(field, "")
+            if not isinstance(value, str):
+                continue
+            for term in BACKTICK_IDENTIFIER_RE.findall(value):
+                if term not in identifiers:
+                    error(errors, f"{label}: `{term}` in {field} is not defined by docs/repo-db-schema.sql")
 
 
 def validate_generated_views(records: list[dict[str, Any]], errors: list[str]) -> None:
@@ -310,6 +351,7 @@ def main() -> int:
         validate_examples(errors)
         validate_sources(sorted_records, errors)
         validate_schema_objects(sorted_records, errors)
+        validate_catalog_schema_terms(sorted_records, errors)
         validate_generated_views(sorted_records, errors)
     if errors:
         print("Catalog validation failed:", file=sys.stderr)

@@ -19,7 +19,7 @@ A repository knowledge base is useful only if retrieval quality and system cost 
 
 ## Repo / DB translation
 
-Persist `rag_eval_runs`, `context_recall`, `latency`, `memory`, `update_cost`, `answer_groundedness`, and `factual_consistency`.
+Persist `rag_eval_runs`, `context_recall`, `latency_ms`, `memory_mb`, `update_cost_ms`, `groundedness`, and `factual_consistency`.
 
 ## First schema objects
 

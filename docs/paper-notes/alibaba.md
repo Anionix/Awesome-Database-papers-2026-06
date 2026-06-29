@@ -21,7 +21,7 @@ A useful repository database should answer not only “what files exist?” but 
 
 ## Repo / DB translation
 
-Store `graph_edges`, `lineage`, `query_runs`, `vector_index`, and `code_to_sql_edges` as connected concepts.
+Store `graph_edges`, `lineage_edges`, `query_runs`, `vector_index_entries`, and `code_to_sql_edges` as connected concepts.
 
 ## First schema objects
 

@@ -19,7 +19,7 @@ A repository with generated artifacts needs freshness, dependency tracking, and 
 
 ## Repo / DB translation
 
-`generated/*.tsv`, `*.jsonl`, `*.mmd`, and generated docs should have source hashes, refresh plans, stale flags, and incremental refresh metadata.
+`generated_artifacts`, `artifact_dependencies`, `refresh_plans`, and `stale_flags` should track source hashes, refresh plans, stale status, and incremental refresh metadata.
 
 ## First schema objects
 

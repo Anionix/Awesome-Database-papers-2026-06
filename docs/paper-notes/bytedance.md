@@ -20,7 +20,7 @@ Large repositories are not just folders. They are multimodal graphs: code calls 
 
 ## Repo / DB translation
 
-Model `file`, `symbol`, `doc`, `schema`, `test`, `proof`, and `embedding` as graph nodes with typed edges.
+Model repository entities in `repo_nodes`, connect them through `graph_edges`, and store multimodal evidence in `multimodal_chunks`.
 
 ## First schema objects
 

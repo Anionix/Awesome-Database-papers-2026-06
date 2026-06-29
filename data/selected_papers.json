@@ -50,7 +50,7 @@
       }
     ],
     "why_it_matters": "A useful repository database should answer not only “what files exist?” but also “which code produced this SQL, which query produced this table, which vector index serves this search?”",
-    "repo_db_translation": "Store `graph_edges`, `lineage`, `query_runs`, `vector_index`, and `code_to_sql_edges` as connected concepts.",
+    "repo_db_translation": "Store `graph_edges`, `lineage_edges`, `query_runs`, `vector_index_entries`, and `code_to_sql_edges` as connected concepts.",
     "first_schema_objects": [
       "query_runs",
       "lineage_edges",
@@ -103,7 +103,7 @@
       }
     ],
     "why_it_matters": "Large repositories are not just folders. They are multimodal graphs: code calls code, docs describe APIs, tests verify behavior, schemas constrain data, embeddings support retrieval.",
-    "repo_db_translation": "Model `file`, `symbol`, `doc`, `schema`, `test`, `proof`, and `embedding` as graph nodes with typed edges.",
+    "repo_db_translation": "Model repository entities in `repo_nodes`, connect them through `graph_edges`, and store multimodal evidence in `multimodal_chunks`.",
     "first_schema_objects": [
       "repo_nodes",
       "graph_edges",
@@ -145,7 +145,7 @@
       }
     ],
     "why_it_matters": "A repository with generated artifacts needs freshness, dependency tracking, and refresh plans. Materialized-view thinking gives a clean model for rebuilds.",
-    "repo_db_translation": "`generated/*.tsv`, `*.jsonl`, `*.mmd`, and generated docs should have source hashes, refresh plans, stale flags, and incremental refresh metadata.",
+    "repo_db_translation": "`generated_artifacts`, `artifact_dependencies`, `refresh_plans`, and `stale_flags` should track source hashes, refresh plans, stale status, and incremental refresh metadata.",
     "first_schema_objects": [
       "generated_artifacts",
       "artifact_dependencies",
@@ -187,7 +187,7 @@
       }
     ],
     "why_it_matters": "Repository metadata is historical by nature. Paths move, files rename, schemas evolve, and hashes remain the best anchor for content identity.",
-    "repo_db_translation": "Use `file_id`, `path`, `sha256`, `version`, `valid_from`, `valid_to`, and `path_history` so metadata remains stable across renames and rebuilds.",
+    "repo_db_translation": "Use `file_id`, `path`, `sha256`, `version_id`, `valid_from`, `valid_to`, and `path_history` so metadata remains stable across renames and rebuilds.",
     "first_schema_objects": [
       "files",
       "file_versions",
@@ -293,7 +293,7 @@
       }
     ],
     "why_it_matters": "Markdown, JSON, and YAML are convenient for authors but weak for joins, constraints, and governance. Relational projection gives queryability without deleting the original documents.",
-    "repo_db_translation": "Normalize `md`, `json`, and `yaml` into `schemas/*.schema.json`, relational tables, and dual document/relational views.",
+    "repo_db_translation": "Normalize raw documents into `docs`, parsed objects into `json_objects`, schema definitions into `schemas`, and dual views through `document_projection_map`.",
     "first_schema_objects": [
       "docs",
       "json_objects",
@@ -335,7 +335,7 @@
       }
     ],
     "why_it_matters": "Semantic SQL makes AI inference part of query execution. That means the repository database should not hide prompts, models, costs, confidence, or verification state in logs only; they belong in normalized tables.",
-    "repo_db_translation": "`ai_runs`, `model_cost`, `confidence`, `cascade_stage`, and `verified` should be stored alongside query and artifact metadata.",
+    "repo_db_translation": "`ai_runs`, `model_costs`, `confidence`, `cascade_stage`, and `verified` should be stored alongside query and artifact metadata.",
     "first_schema_objects": [
       "ai_runs",
       "model_costs",
@@ -419,7 +419,7 @@
       }
     ],
     "why_it_matters": "A repository knowledge base is useful only if retrieval quality and system cost are measured together. Recall alone is not enough.",
-    "repo_db_translation": "Persist `rag_eval_runs`, `context_recall`, `latency`, `memory`, `update_cost`, `answer_groundedness`, and `factual_consistency`.",
+    "repo_db_translation": "Persist `rag_eval_runs`, `context_recall`, `latency_ms`, `memory_mb`, `update_cost_ms`, `groundedness`, and `factual_consistency`.",
     "first_schema_objects": [
       "rag_eval_runs",
       "retrieval_metrics",

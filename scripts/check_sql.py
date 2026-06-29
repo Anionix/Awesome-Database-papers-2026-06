@@ -15,6 +15,7 @@ EXPLAIN = ROOT / "examples" / "explain.sql"
 
 EXPECTED_INDEXES = {
     "artifact_dependencies_source_idx",
+    "code_to_sql_edges_query_run_idx",
     "factuality_checks_eval_query_idx",
     "generated_artifacts_stale_idx",
     "graph_edges_dst_idx",
@@ -23,6 +24,10 @@ EXPECTED_INDEXES = {
     "model_costs_ai_run_idx",
     "retrieval_metrics_eval_query_idx",
     "ai_runs_unverified_idx",
+}
+
+EXPECTED_CONSTRAINTS = {
+    "code_to_sql_edges_query_run_fk",
 }
 
 
@@ -36,6 +41,10 @@ def table_names(sql: str) -> set[str]:
 
 def index_names(sql: str) -> set[str]:
     return set(re.findall(r"\bcreate\s+(?:unique\s+)?index\s+([a-z][a-z0-9_]*)\b", sql, flags=re.IGNORECASE))
+
+
+def constraint_names(sql: str) -> set[str]:
+    return set(re.findall(r"\badd\s+constraint\s+([a-z][a-z0-9_]*)\b", sql, flags=re.IGNORECASE))
 
 
 def referenced_tables(sql: str) -> set[str]:
@@ -54,6 +63,7 @@ def main() -> int:
     explain = read(EXPLAIN)
     tables = table_names(ddl)
     indexes = index_names(ddl)
+    constraints = constraint_names(ddl)
 
     if len(tables) < 25:
         errors.append(f"expected at least 25 tables in {DDL.relative_to(ROOT)}, found {len(tables)}")
@@ -72,6 +82,9 @@ def main() -> int:
     missing_indexes = sorted(EXPECTED_INDEXES - indexes)
     if missing_indexes:
         errors.append(f"missing expected optimizer indexes: {missing_indexes}")
+    missing_constraints = sorted(EXPECTED_CONSTRAINTS - constraints)
+    if missing_constraints:
+        errors.append(f"missing expected SQL constraints: {missing_constraints}")
 
     for path, sql in [(DDL, ddl), (SEED, seed), (QUERIES, queries), (EXPLAIN, explain)]:
         if sql.count("(") != sql.count(")"):
