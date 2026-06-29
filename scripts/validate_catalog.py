@@ -92,6 +92,16 @@ def validate_schema_file(errors: list[str]) -> None:
         error(errors, f"schema is missing required record fields: {sorted(missing)}")
 
 
+def load_generator_module(errors: list[str]) -> Any | None:
+    spec = importlib.util.spec_from_file_location("generate_catalog", ROOT / "scripts" / "generate_catalog.py")
+    if spec is None or spec.loader is None:
+        error(errors, "could not import scripts/generate_catalog.py")
+        return None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def validate_records(records: Any, errors: list[str]) -> None:
     if not isinstance(records, list):
         error(errors, "data/selected_papers.json must be a list")
@@ -149,7 +159,7 @@ def validate_csv(records: list[dict[str, Any]], errors: list[str]) -> None:
     if len(rows) != len(records):
         error(errors, f"CSV row count {len(rows)} does not match JSON row count {len(records)}")
     if [row["company"] for row in rows] != [record["company"] for record in records]:
-        error(errors, "CSV company order does not match canonical JSON order")
+        error(errors, "CSV company order does not match generated catalog order")
 
 
 def validate_manifest(records: list[dict[str, Any]], errors: list[str]) -> None:
@@ -159,7 +169,7 @@ def validate_manifest(records: list[dict[str, Any]], errors: list[str]) -> None:
     if manifest.get("row_count") != len(records):
         error(errors, "manifest row_count does not match catalog length")
     if manifest.get("companies") != [record["company"] for record in records]:
-        error(errors, "manifest companies do not match catalog order")
+        error(errors, "manifest companies do not match generated catalog order")
     actual_files = iter_repo_files()
     listed_files = sorted(manifest.get("files", []))
     if listed_files != actual_files:
@@ -219,12 +229,9 @@ def validate_schema_objects(records: list[dict[str, Any]], errors: list[str]) ->
 
 
 def validate_generated_views(records: list[dict[str, Any]], errors: list[str]) -> None:
-    spec = importlib.util.spec_from_file_location("generate_catalog", ROOT / "scripts" / "generate_catalog.py")
-    if spec is None or spec.loader is None:
-        error(errors, "could not import scripts/generate_catalog.py")
+    module = load_generator_module(errors)
+    if module is None:
         return
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
     outputs = module.build_outputs(records)
     for path, expected in outputs.items():
         actual = path.read_text(encoding="utf-8") if path.exists() else None
@@ -238,13 +245,18 @@ def main() -> int:
     records = load_json(CATALOG_PATH)
     validate_records(records, errors)
     if isinstance(records, list):
-        validate_csv(records, errors)
-        validate_manifest(records, errors)
-        validate_paper_notes(records, errors)
+        sorted_records = records
+        if all(isinstance(record, dict) for record in records):
+            module = load_generator_module(errors)
+            if module is not None:
+                sorted_records = module.sort_records(records)
+        validate_csv(sorted_records, errors)
+        validate_manifest(sorted_records, errors)
+        validate_paper_notes(sorted_records, errors)
         validate_examples(errors)
-        validate_sources(records, errors)
-        validate_schema_objects(records, errors)
-        validate_generated_views(records, errors)
+        validate_sources(sorted_records, errors)
+        validate_schema_objects(sorted_records, errors)
+        validate_generated_views(sorted_records, errors)
     if errors:
         print("Catalog validation failed:", file=sys.stderr)
         for item in errors:

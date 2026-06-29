@@ -64,9 +64,7 @@ SOURCE_TYPE_LABELS = {
 }
 
 
-def load_catalog() -> list[dict[str, Any]]:
-    with CATALOG_PATH.open(encoding="utf-8") as handle:
-        records = json.load(handle)
+def sort_records(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return sorted(
         records,
         key=lambda row: (
@@ -75,6 +73,12 @@ def load_catalog() -> list[dict[str, Any]]:
             row.get("theme", ""),
         ),
     )
+
+
+def load_catalog() -> list[dict[str, Any]]:
+    with CATALOG_PATH.open(encoding="utf-8") as handle:
+        records = json.load(handle)
+    return sort_records(records)
 
 
 def slugify(value: str) -> str:
@@ -354,7 +358,7 @@ def iter_repo_files() -> list[str]:
     return sorted(paths)
 
 
-def manifest_text(records: list[dict[str, Any]]) -> str:
+def manifest_text(records: list[dict[str, Any]], files: list[str]) -> str:
     existing: dict[str, Any] = {}
     manifest_path = ROOT / "manifest.json"
     if manifest_path.exists():
@@ -371,9 +375,16 @@ def manifest_text(records: list[dict[str, Any]]) -> str:
         "canonical_data": "data/selected_papers.json",
         "row_count": len(records),
         "companies": [record["company"] for record in records],
-        "files": iter_repo_files(),
+        "files": files,
     }
     return json.dumps(payload, indent=2, ensure_ascii=False) + "\n"
+
+
+def planned_file_list(outputs: dict[pathlib.Path, str]) -> list[str]:
+    files = set(iter_repo_files())
+    files.update(path.relative_to(ROOT).as_posix() for path in outputs)
+    files.add("manifest.json")
+    return sorted(files)
 
 
 def build_outputs(records: list[dict[str, Any]]) -> dict[pathlib.Path, str]:
@@ -382,7 +393,6 @@ def build_outputs(records: list[dict[str, Any]]) -> dict[pathlib.Path, str]:
         ROOT / "docs" / "curated-table.md": curated_table_text(records),
         ROOT / "docs" / "source-links.md": source_links_text(records),
         ROOT / "docs" / "topic-map.md": topic_map_text(records),
-        ROOT / "manifest.json": manifest_text(records),
     }
 
     readme_path = ROOT / "README.md"
@@ -396,6 +406,7 @@ def build_outputs(records: list[dict[str, Any]]) -> dict[pathlib.Path, str]:
 
     for record in records:
         outputs[ROOT / "docs" / "paper-notes" / f"{slugify(record['company'])}.md"] = paper_note_text(record)
+    outputs[ROOT / "manifest.json"] = manifest_text(records, planned_file_list(outputs))
     return outputs
 
 
