@@ -1,6 +1,8 @@
--- Example queries for the repository metadata database.
+-- EXPLAIN wrappers for examples/queries.sql.
+-- Run after docs/repo-db-schema.sql and examples/seed.sql in a scratch database.
 
--- 1. Find stale generated artifacts and their source dependencies.
+\echo '1. Stale generated artifacts and dependencies'
+explain (analyze, buffers, format text)
 select
   ga.artifact_path,
   ga.artifact_type,
@@ -13,7 +15,8 @@ join repo_nodes rn on rn.node_id = ad.source_node_id
 where ga.stale_flag = true
 order by ga.artifact_path;
 
--- 2. Inspect unverified AI outputs with high cost.
+\echo '2. Unverified AI outputs with high cost'
+explain (analyze, buffers, format text)
 select
   ar.ai_run_id,
   ar.task_type,
@@ -27,7 +30,8 @@ join model_costs mc on mc.ai_run_id = ar.ai_run_id
 where ar.verified = false
 order by mc.estimated_usd desc, ar.latency_ms desc;
 
--- 3. Compare accepted vs rejected index advice.
+\echo '3. Accepted vs rejected index advice'
+explain (analyze, buffers, format text)
 select
   proposed_by,
   status,
@@ -36,7 +40,8 @@ from index_advice
 group by proposed_by, status
 order by proposed_by, status;
 
--- 4. Find graph neighborhoods around a changed node.
+\echo '4. Graph neighborhoods around selected_papers catalog'
+explain (analyze, buffers, format text)
 select
   ge.edge_type,
   src.display_name as source,
@@ -59,7 +64,8 @@ where ge.src_node_id = (
   )
 order by ge.edge_type;
 
--- 5. Track RAG quality and systems cost together.
+\echo '5. RAG quality and systems cost together'
+explain (analyze, buffers, format text)
 select
   rer.eval_name,
   avg(rm.context_recall) as avg_context_recall,

@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Anionix/Awesome-Database-papers-2026-06/schemas/selected-paper.schema.json",
+  "title": "Awesome Database Papers catalog",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "company",
+      "theme",
+      "adoptable_idea",
+      "key_papers",
+      "why_it_matters",
+      "repo_db_translation",
+      "first_schema_objects",
+      "do_now",
+      "do_later",
+      "watch_out",
+      "priority"
+    ],
+    "properties": {
+      "company": { "type": "string", "minLength": 1 },
+      "theme": { "type": "string", "minLength": 1 },
+      "adoptable_idea": { "type": "string", "minLength": 1 },
+      "key_papers": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "title",
+            "url",
+            "type",
+            "source_type",
+            "source_url",
+            "venue_or_track",
+            "doi_or_arxiv",
+            "last_verified",
+            "claim_scope"
+          ],
+          "properties": {
+            "title": { "type": "string", "minLength": 1 },
+            "url": { "type": "string", "format": "uri" },
+            "type": { "type": "string", "minLength": 1 },
+            "source_type": { "type": "string", "minLength": 1 },
+            "source_url": { "type": "string", "format": "uri" },
+            "venue_or_track": { "type": "string", "minLength": 1 },
+            "doi_or_arxiv": { "type": "string" },
+            "last_verified": {
+              "type": "string",
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+            },
+            "claim_scope": {
+              "type": "string",
+              "enum": [
+                "paper metadata",
+                "accepted-paper listing",
+                "company research page",
+                "implementation interpretation source"
+              ]
+            }
+          }
+        }
+      },
+      "why_it_matters": { "type": "string", "minLength": 1 },
+      "repo_db_translation": { "type": "string", "minLength": 1 },
+      "first_schema_objects": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        }
+      },
+      "do_now": { "type": "string", "minLength": 1 },
+      "do_later": { "type": "string", "minLength": 1 },
+      "watch_out": { "type": "string", "minLength": 1 },
+      "priority": {
+        "type": "string",
+        "enum": ["P0", "P1", "P2"]
+      }
+    }
+  }
+}

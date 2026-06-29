@@ -1,0 +1,26 @@
+name: Schema or playbook improvement
+description: Propose a schema, SQL, or implementation-playbook refinement.
+title: "Improve schema/playbook: "
+labels: ["schema", "playbook"]
+body:
+  - type: textarea
+    id: current_gap
+    attributes:
+      label: Current gap
+      description: What is unclear, inconsistent, or not executable today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposed_change
+    attributes:
+      label: Proposed change
+      description: Include table names, validation behavior, examples, or docs that should change.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: How should `make check`, SQL examples, or generated docs prove the improvement?
+    validations:
+      required: true

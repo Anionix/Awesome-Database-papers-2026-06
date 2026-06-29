@@ -1,165 +1,5 @@
 [
   {
-    "company": "Snowflake",
-    "theme": "AI operators inside the database optimizer",
-    "adoptable_idea": "Treat LLM/AI calls as first-class database operators with measurable cost, quality, confidence, and fallback behavior.",
-    "key_papers": [
-      {
-        "title": "Streaming Model Cascades for Semantic SQL",
-        "url": "https://arxiv.org/abs/2604.00660",
-        "type": "primary / arXiv"
-      },
-      {
-        "title": "Cortex AISQL: A Production SQL Engine for Unstructured Data",
-        "url": "https://2026.sigmod.org/sigmod_industry_papers.shtml",
-        "type": "SIGMOD 2026 Industry listing"
-      }
-    ],
-    "why_it_matters": "Semantic SQL makes AI inference part of query execution. That means the repository database should not hide prompts, models, costs, confidence, or verification state in logs only; they belong in normalized tables.",
-    "repo_db_translation": "`ai_runs`, `model_cost`, `confidence`, `cascade_stage`, and `verified` should be stored alongside query and artifact metadata.",
-    "first_schema_objects": [
-      "ai_runs",
-      "model_costs",
-      "model_cascade_stages",
-      "semantic_operator_results",
-      "verification_events"
-    ],
-    "do_now": "Log every AI call with model, prompt hash, input row/object id, output hash, confidence, latency, token usage, price estimate, cascade stage, and verification status.",
-    "do_later": "Let the optimizer choose between small/fast model, large/oracle model, cached output, and human review based on cost and confidence.",
-    "watch_out": "Do not trust a semantic operator just because it returns an answer. Persist uncertainty and verification state so downstream artifacts can be rebuilt or invalidated.",
-    "priority": "P0"
-  },
-  {
-    "company": "Microsoft",
-    "theme": "LLM recommendations must be validated by database tooling",
-    "adoptable_idea": "Use LLMs for proposal generation, but rely on EXPLAIN plans, replay, benchmarks, and optimizer tooling for acceptance.",
-    "key_papers": [
-      {
-        "title": "Evaluating the Practical Effectiveness of LLM-Driven Index Tuning with Microsoft Database Tuning Advisor",
-        "url": "https://arxiv.org/abs/2603.09181",
-        "type": "primary / arXiv"
-      },
-      {
-        "title": "Bitmap Filtering in the Fabric Data Warehouse",
-        "url": "https://2026.sigmod.org/sigmod_industry_papers.shtml",
-        "type": "SIGMOD 2026 Industry listing"
-      },
-      {
-        "title": "CoddSpeed: Hardware Accelerated Query Processing in Microsoft Fabric",
-        "url": "https://2026.sigmod.org/sigmod_industry_papers.shtml",
-        "type": "SIGMOD 2026 Industry listing"
-      },
-      {
-        "title": "ConDABench: Interactive Evaluation of Language Models for Data Analysis",
-        "url": "https://2026.sigmod.org/sigmod_industry_papers.shtml",
-        "type": "SIGMOD 2026 Industry listing"
-      }
-    ],
-    "why_it_matters": "LLMs can suggest useful index or schema changes, but production databases need repeatable validation because model output has variance and can regress workloads.",
-    "repo_db_translation": "LLM-generated index/schema advice must pass `EXPLAIN`, benchmark runs, workload replay, and rollback checks before being merged.",
-    "first_schema_objects": [
-      "index_advice",
-      "explain_plans",
-      "benchmark_runs",
-      "workload_replays",
-      "validation_results"
-    ],
-    "do_now": "Create a gate: LLM proposal -> generated migration -> EXPLAIN delta -> benchmark -> replay -> approval.",
-    "do_later": "Train a local rule library from LLM-generated hypotheses that repeatedly pass validation.",
-    "watch_out": "Never merge index advice directly from a model. Treat it as a candidate patch, not a decision.",
-    "priority": "P0"
-  },
-  {
-    "company": "Databricks",
-    "theme": "Generated artifacts as materialized views",
-    "adoptable_idea": "Treat generated files, summaries, diagrams, JSONL, TSV, and Mermaid outputs as materialized views over source repository state.",
-    "key_papers": [
-      {
-        "title": "Enzyme: Incremental View Maintenance for Data Engineering",
-        "url": "https://arxiv.org/abs/2603.27775",
-        "type": "primary / arXiv"
-      },
-      {
-        "title": "Enzyme: Incremental View Maintenance With Spark Declarative Pipelines",
-        "url": "https://2026.sigmod.org/sigmod_industry_papers.shtml",
-        "type": "SIGMOD 2026 Industry listing"
-      }
-    ],
-    "why_it_matters": "A repository with generated artifacts needs freshness, dependency tracking, and refresh plans. Materialized-view thinking gives a clean model for rebuilds.",
-    "repo_db_translation": "`generated/*.tsv`, `*.jsonl`, `*.mmd`, and generated docs should have source hashes, refresh plans, stale flags, and incremental refresh metadata.",
-    "first_schema_objects": [
-      "generated_artifacts",
-      "artifact_dependencies",
-      "refresh_plans",
-      "refresh_runs",
-      "stale_flags"
-    ],
-    "do_now": "Record source file hashes for every generated artifact and mark artifacts stale when dependencies change.",
-    "do_later": "Add an incremental refresh planner that refreshes only affected artifacts rather than rebuilding everything.",
-    "watch_out": "Without lineage, generated docs silently drift from the source repository.",
-    "priority": "P0"
-  },
-  {
-    "company": "AWS",
-    "theme": "PostgreSQL-compatible horizontal scale",
-    "adoptable_idea": "Start with normal PostgreSQL semantics, then add router, shard, replica, and distributed transaction concepts only when scale demands it.",
-    "key_papers": [
-      {
-        "title": "Aurora PostgreSQL Limitless Database: Building a Highly Scalable OLTP Database",
-        "url": "https://www.amazon.science/publications/aurora-postgresql-limitless-database-building-a-highly-scalable-oltp-database",
-        "type": "primary / Amazon Science"
-      },
-      {
-        "title": "Aurora PostgreSQL Limitless Database: Building a Highly Scalable OLTP Database",
-        "url": "https://2026.sigmod.org/sigmod_industry_papers.shtml",
-        "type": "SIGMOD 2026 Industry listing"
-      }
-    ],
-    "why_it_matters": "Most repo metadata projects should begin with one reliable relational database. Horizontal scaling should preserve compatibility instead of forcing application-level sharding too early.",
-    "repo_db_translation": "Begin with single PostgreSQL. When repositories or organizations grow, introduce logical routers, project shards, replicas, and distributed transaction logs.",
-    "first_schema_objects": [
-      "router_rules",
-      "project_shards",
-      "replicas",
-      "global_transaction_log",
-      "shard_rebalancing_events"
-    ],
-    "do_now": "Design tables with stable IDs and clear shard keys, even before sharding is implemented.",
-    "do_later": "Route by organization, repository, package, or project boundary when metadata volume becomes large.",
-    "watch_out": "Avoid premature sharding. The first goal is correctness and compatibility; scale-out is a later migration path.",
-    "priority": "P1"
-  },
-  {
-    "company": "Google",
-    "theme": "Long-lived key-value / wide-column metadata design",
-    "adoptable_idea": "Optimize metadata identity for decades: stable keys, versioned paths, immutable content hashes, and forward-compatible columns.",
-    "key_papers": [
-      {
-        "title": "Twenty Years of Bigtable",
-        "url": "https://research.google/pubs/twenty-years-of-bigtable/",
-        "type": "primary / Google Research"
-      },
-      {
-        "title": "Twenty Years of Bigtable",
-        "url": "https://2026.sigmod.org/sigmod_industry_papers.shtml",
-        "type": "SIGMOD 2026 Industry listing"
-      }
-    ],
-    "why_it_matters": "Repository metadata is historical by nature. Paths move, files rename, schemas evolve, and hashes remain the best anchor for content identity.",
-    "repo_db_translation": "Use `file_id`, `path`, `sha256`, `version`, `valid_from`, `valid_to`, and `path_history` so metadata remains stable across renames and rebuilds.",
-    "first_schema_objects": [
-      "files",
-      "file_versions",
-      "path_history",
-      "content_hashes",
-      "metadata_cells"
-    ],
-    "do_now": "Separate logical file identity from mutable path and immutable content hash.",
-    "do_later": "Partition metadata by repository, time, and content-hash prefix for large-scale scans.",
-    "watch_out": "Do not use path as the only primary key. Paths are names, not identities.",
-    "priority": "P0"
-  },
-  {
     "company": "Alibaba",
     "theme": "Unified optimizer, vector, lineage, and SQL visibility",
     "adoptable_idea": "Connect query execution, vector search, lineage, and code-to-SQL visibility into one metadata fabric.",
@@ -167,22 +7,46 @@
       {
         "title": "Learned Query Optimizer in Alibaba MaxCompute: Challenges, Analysis, and Solutions",
         "url": "https://arxiv.org/abs/2602.07336",
-        "type": "primary / arXiv"
+        "type": "primary / arXiv",
+        "source_url": "https://arxiv.org/abs/2602.07336",
+        "last_verified": "2026-06-29",
+        "source_type": "arxiv",
+        "venue_or_track": "arXiv",
+        "doi_or_arxiv": "arXiv:2602.07336",
+        "claim_scope": "paper metadata"
       },
       {
         "title": "LindormVector: A Distributed Vector Engine on a Cloud-Native Multi-Model NoSQL Database",
         "url": "https://2026.sigmod.org/sigmod_industry_papers.shtml",
-        "type": "SIGMOD 2026 Industry listing"
+        "type": "SIGMOD 2026 Industry listing",
+        "source_url": "https://2026.sigmod.org/sigmod_industry_papers.shtml",
+        "last_verified": "2026-06-29",
+        "source_type": "sigmod_industry_listing",
+        "venue_or_track": "SIGMOD 2026 Industry",
+        "doi_or_arxiv": "",
+        "claim_scope": "accepted-paper listing"
       },
       {
         "title": "SQLens: Continuous Code-to-SQL Visibility in the Wild",
         "url": "https://2026.sigmod.org/sigmod_industry_papers.shtml",
-        "type": "SIGMOD 2026 Industry listing"
+        "type": "SIGMOD 2026 Industry listing",
+        "source_url": "https://2026.sigmod.org/sigmod_industry_papers.shtml",
+        "last_verified": "2026-06-29",
+        "source_type": "sigmod_industry_listing",
+        "venue_or_track": "SIGMOD 2026 Industry",
+        "doi_or_arxiv": "",
+        "claim_scope": "accepted-paper listing"
       },
       {
         "title": "NebulaSQL: A Large-scale Feature Computation System for Online Recommendation",
         "url": "https://2026.sigmod.org/sigmod_industry_papers.shtml",
-        "type": "SIGMOD 2026 Industry listing"
+        "type": "SIGMOD 2026 Industry listing",
+        "source_url": "https://2026.sigmod.org/sigmod_industry_papers.shtml",
+        "last_verified": "2026-06-29",
+        "source_type": "sigmod_industry_listing",
+        "venue_or_track": "SIGMOD 2026 Industry",
+        "doi_or_arxiv": "",
+        "claim_scope": "accepted-paper listing"
       }
     ],
     "why_it_matters": "A useful repository database should answer not only “what files exist?” but also “which code produced this SQL, which query produced this table, which vector index serves this search?”",
@@ -207,17 +71,35 @@
       {
         "title": "ByteHouse: ByteDance’s Cloud-Native Data Warehouse for Real-Time Multimodal Data Analytics",
         "url": "https://arxiv.org/abs/2602.08226",
-        "type": "primary / arXiv"
+        "type": "primary / arXiv",
+        "source_url": "https://arxiv.org/abs/2602.08226",
+        "last_verified": "2026-06-29",
+        "source_type": "arxiv",
+        "venue_or_track": "arXiv",
+        "doi_or_arxiv": "arXiv:2602.08226",
+        "claim_scope": "paper metadata"
       },
       {
         "title": "ByteGraph-Dione: An Adaptive Dual-Format Graph Engine with Hotspot Awareness and Transaction Efficiency for Production-Scale Workloads",
         "url": "https://2026.sigmod.org/sigmod_industry_papers.shtml",
-        "type": "SIGMOD 2026 Industry listing"
+        "type": "SIGMOD 2026 Industry listing",
+        "source_url": "https://2026.sigmod.org/sigmod_industry_papers.shtml",
+        "last_verified": "2026-06-29",
+        "source_type": "sigmod_industry_listing",
+        "venue_or_track": "SIGMOD 2026 Industry",
+        "doi_or_arxiv": "",
+        "claim_scope": "accepted-paper listing"
       },
       {
         "title": "G2+D: A High Performance Distributed Graph Mining System",
         "url": "https://2026.sigmod.org/sigmod_industry_papers.shtml",
-        "type": "SIGMOD 2026 Industry listing"
+        "type": "SIGMOD 2026 Industry listing",
+        "source_url": "https://2026.sigmod.org/sigmod_industry_papers.shtml",
+        "last_verified": "2026-06-29",
+        "source_type": "sigmod_industry_listing",
+        "venue_or_track": "SIGMOD 2026 Industry",
+        "doi_or_arxiv": "",
+        "claim_scope": "accepted-paper listing"
       }
     ],
     "why_it_matters": "Large repositories are not just folders. They are multimodal graphs: code calls code, docs describe APIs, tests verify behavior, schemas constrain data, embeddings support retrieval.",
@@ -235,34 +117,152 @@
     "priority": "P0"
   },
   {
-    "company": "IBM",
-    "theme": "End-to-end benchmarking for RAG and embeddings",
-    "adoptable_idea": "Measure RAG as a whole system: embedding, indexing, retrieval, reranking, generation, latency, memory, update cost, and factual consistency.",
+    "company": "Databricks",
+    "theme": "Generated artifacts as materialized views",
+    "adoptable_idea": "Treat generated files, summaries, diagrams, JSONL, TSV, and Mermaid outputs as materialized views over source repository state.",
     "key_papers": [
       {
-        "title": "RAGPerf: An End-to-End Benchmarking Framework for Retrieval-Augmented Generation Systems",
-        "url": "https://arxiv.org/abs/2603.10765",
-        "type": "supporting benchmark / arXiv"
+        "title": "Enzyme: Incremental View Maintenance for Data Engineering",
+        "url": "https://arxiv.org/abs/2603.27775",
+        "type": "primary / arXiv",
+        "source_url": "https://arxiv.org/abs/2603.27775",
+        "last_verified": "2026-06-29",
+        "source_type": "arxiv",
+        "venue_or_track": "arXiv",
+        "doi_or_arxiv": "arXiv:2603.27775",
+        "claim_scope": "paper metadata"
       },
       {
-        "title": "Fabric-X: Scaling Hyperledger Fabric for Asset Exchange",
+        "title": "Enzyme: Incremental View Maintenance With Spark Declarative Pipelines",
         "url": "https://2026.sigmod.org/sigmod_industry_papers.shtml",
-        "type": "SIGMOD 2026 Industry listing"
+        "type": "SIGMOD 2026 Industry listing",
+        "source_url": "https://2026.sigmod.org/sigmod_industry_papers.shtml",
+        "last_verified": "2026-06-29",
+        "source_type": "sigmod_industry_listing",
+        "venue_or_track": "SIGMOD 2026 Industry",
+        "doi_or_arxiv": "",
+        "claim_scope": "accepted-paper listing"
       }
     ],
-    "why_it_matters": "A repository knowledge base is useful only if retrieval quality and system cost are measured together. Recall alone is not enough.",
-    "repo_db_translation": "Persist `rag_eval_runs`, `context_recall`, `latency`, `memory`, `update_cost`, `answer_groundedness`, and `factual_consistency`.",
+    "why_it_matters": "A repository with generated artifacts needs freshness, dependency tracking, and refresh plans. Materialized-view thinking gives a clean model for rebuilds.",
+    "repo_db_translation": "`generated/*.tsv`, `*.jsonl`, `*.mmd`, and generated docs should have source hashes, refresh plans, stale flags, and incremental refresh metadata.",
     "first_schema_objects": [
-      "rag_eval_runs",
-      "retrieval_metrics",
-      "generation_metrics",
-      "rerank_metrics",
-      "factuality_checks"
+      "generated_artifacts",
+      "artifact_dependencies",
+      "refresh_plans",
+      "refresh_runs",
+      "stale_flags"
     ],
-    "do_now": "Benchmark at least five dimensions: recall, answer quality, latency, memory, and index update cost.",
-    "do_later": "Run benchmark suites whenever embedding model, chunker, index, or reranker changes.",
-    "watch_out": "RAG quality can improve while latency or update cost becomes unacceptable. Track both quality and systems metrics.",
-    "priority": "P1"
+    "do_now": "Record source file hashes for every generated artifact and mark artifacts stale when dependencies change.",
+    "do_later": "Add an incremental refresh planner that refreshes only affected artifacts rather than rebuilding everything.",
+    "watch_out": "Without lineage, generated docs silently drift from the source repository.",
+    "priority": "P0"
+  },
+  {
+    "company": "Google",
+    "theme": "Long-lived key-value / wide-column metadata design",
+    "adoptable_idea": "Optimize metadata identity for decades: stable keys, versioned paths, immutable content hashes, and forward-compatible columns.",
+    "key_papers": [
+      {
+        "title": "Twenty Years of Bigtable",
+        "url": "https://research.google/pubs/twenty-years-of-bigtable/",
+        "type": "primary / Google Research",
+        "source_url": "https://research.google/pubs/twenty-years-of-bigtable/",
+        "last_verified": "2026-06-29",
+        "source_type": "google_research",
+        "venue_or_track": "Google Research",
+        "doi_or_arxiv": "",
+        "claim_scope": "paper metadata"
+      },
+      {
+        "title": "Twenty Years of Bigtable",
+        "url": "https://2026.sigmod.org/sigmod_industry_papers.shtml",
+        "type": "SIGMOD 2026 Industry listing",
+        "source_url": "https://2026.sigmod.org/sigmod_industry_papers.shtml",
+        "last_verified": "2026-06-29",
+        "source_type": "sigmod_industry_listing",
+        "venue_or_track": "SIGMOD 2026 Industry",
+        "doi_or_arxiv": "",
+        "claim_scope": "accepted-paper listing"
+      }
+    ],
+    "why_it_matters": "Repository metadata is historical by nature. Paths move, files rename, schemas evolve, and hashes remain the best anchor for content identity.",
+    "repo_db_translation": "Use `file_id`, `path`, `sha256`, `version`, `valid_from`, `valid_to`, and `path_history` so metadata remains stable across renames and rebuilds.",
+    "first_schema_objects": [
+      "files",
+      "file_versions",
+      "path_history",
+      "content_hashes",
+      "metadata_cells"
+    ],
+    "do_now": "Separate logical file identity from mutable path and immutable content hash.",
+    "do_later": "Partition metadata by repository, time, and content-hash prefix for large-scale scans.",
+    "watch_out": "Do not use path as the only primary key. Paths are names, not identities.",
+    "priority": "P0"
+  },
+  {
+    "company": "Microsoft",
+    "theme": "LLM recommendations must be validated by database tooling",
+    "adoptable_idea": "Use LLMs for proposal generation, but rely on EXPLAIN plans, replay, benchmarks, and optimizer tooling for acceptance.",
+    "key_papers": [
+      {
+        "title": "Evaluating the Practical Effectiveness of LLM-Driven Index Tuning with Microsoft Database Tuning Advisor",
+        "url": "https://arxiv.org/abs/2603.09181",
+        "type": "primary / arXiv",
+        "source_url": "https://arxiv.org/abs/2603.09181",
+        "last_verified": "2026-06-29",
+        "source_type": "arxiv",
+        "venue_or_track": "arXiv",
+        "doi_or_arxiv": "arXiv:2603.09181",
+        "claim_scope": "paper metadata"
+      },
+      {
+        "title": "Bitmap Filtering in the Fabric Data Warehouse",
+        "url": "https://2026.sigmod.org/sigmod_industry_papers.shtml",
+        "type": "SIGMOD 2026 Industry listing",
+        "source_url": "https://2026.sigmod.org/sigmod_industry_papers.shtml",
+        "last_verified": "2026-06-29",
+        "source_type": "sigmod_industry_listing",
+        "venue_or_track": "SIGMOD 2026 Industry",
+        "doi_or_arxiv": "",
+        "claim_scope": "accepted-paper listing"
+      },
+      {
+        "title": "CoddSpeed: Hardware Accelerated Query Processing in Microsoft Fabric",
+        "url": "https://2026.sigmod.org/sigmod_industry_papers.shtml",
+        "type": "SIGMOD 2026 Industry listing",
+        "source_url": "https://2026.sigmod.org/sigmod_industry_papers.shtml",
+        "last_verified": "2026-06-29",
+        "source_type": "sigmod_industry_listing",
+        "venue_or_track": "SIGMOD 2026 Industry",
+        "doi_or_arxiv": "",
+        "claim_scope": "accepted-paper listing"
+      },
+      {
+        "title": "ConDABench: Interactive Evaluation of Language Models for Data Analysis",
+        "url": "https://2026.sigmod.org/sigmod_industry_papers.shtml",
+        "type": "SIGMOD 2026 Industry listing",
+        "source_url": "https://2026.sigmod.org/sigmod_industry_papers.shtml",
+        "last_verified": "2026-06-29",
+        "source_type": "sigmod_industry_listing",
+        "venue_or_track": "SIGMOD 2026 Industry",
+        "doi_or_arxiv": "",
+        "claim_scope": "accepted-paper listing"
+      }
+    ],
+    "why_it_matters": "LLMs can suggest useful index or schema changes, but production databases need repeatable validation because model output has variance and can regress workloads.",
+    "repo_db_translation": "LLM-generated index/schema advice must pass `EXPLAIN`, benchmark runs, workload replay, and rollback checks before being merged.",
+    "first_schema_objects": [
+      "index_advice",
+      "explain_plans",
+      "benchmark_runs",
+      "workload_replays",
+      "validation_results"
+    ],
+    "do_now": "Create a gate: LLM proposal -> generated migration -> EXPLAIN delta -> benchmark -> replay -> approval.",
+    "do_later": "Train a local rule library from LLM-generated hypotheses that repeatedly pass validation.",
+    "watch_out": "Never merge index advice directly from a model. Treat it as a candidate patch, not a decision.",
+    "priority": "P0"
   },
   {
     "company": "Oracle",
@@ -272,12 +272,24 @@
       {
         "title": "From JSON to Duality: Automated Application Migration from Document to Relational Databases",
         "url": "https://dl.acm.org/doi/10.1145/3788853.3803096",
-        "type": "ACM DOI"
+        "type": "ACM DOI",
+        "source_url": "https://dl.acm.org/doi/10.1145/3788853.3803096",
+        "last_verified": "2026-06-29",
+        "source_type": "acm_doi",
+        "venue_or_track": "ACM Digital Library",
+        "doi_or_arxiv": "10.1145/3788853.3803096",
+        "claim_scope": "paper metadata"
       },
       {
         "title": "From JSON to Duality: Automated Application Migration from Document to Relational Databases",
         "url": "https://2026.sigmod.org/sigmod_industry_papers.shtml",
-        "type": "SIGMOD 2026 Industry listing"
+        "type": "SIGMOD 2026 Industry listing",
+        "source_url": "https://2026.sigmod.org/sigmod_industry_papers.shtml",
+        "last_verified": "2026-06-29",
+        "source_type": "sigmod_industry_listing",
+        "venue_or_track": "SIGMOD 2026 Industry",
+        "doi_or_arxiv": "",
+        "claim_scope": "accepted-paper listing"
       }
     ],
     "why_it_matters": "Markdown, JSON, and YAML are convenient for authors but weak for joins, constraints, and governance. Relational projection gives queryability without deleting the original documents.",
@@ -295,6 +307,132 @@
     "priority": "P0"
   },
   {
+    "company": "Snowflake",
+    "theme": "AI operators inside the database optimizer",
+    "adoptable_idea": "Treat LLM/AI calls as first-class database operators with measurable cost, quality, confidence, and fallback behavior.",
+    "key_papers": [
+      {
+        "title": "Streaming Model Cascades for Semantic SQL",
+        "url": "https://arxiv.org/abs/2604.00660",
+        "type": "primary / arXiv",
+        "source_url": "https://arxiv.org/abs/2604.00660",
+        "last_verified": "2026-06-29",
+        "source_type": "arxiv",
+        "venue_or_track": "arXiv",
+        "doi_or_arxiv": "arXiv:2604.00660",
+        "claim_scope": "paper metadata"
+      },
+      {
+        "title": "Cortex AISQL: A Production SQL Engine for Unstructured Data",
+        "url": "https://2026.sigmod.org/sigmod_industry_papers.shtml",
+        "type": "SIGMOD 2026 Industry listing",
+        "source_url": "https://2026.sigmod.org/sigmod_industry_papers.shtml",
+        "last_verified": "2026-06-29",
+        "source_type": "sigmod_industry_listing",
+        "venue_or_track": "SIGMOD 2026 Industry",
+        "doi_or_arxiv": "",
+        "claim_scope": "accepted-paper listing"
+      }
+    ],
+    "why_it_matters": "Semantic SQL makes AI inference part of query execution. That means the repository database should not hide prompts, models, costs, confidence, or verification state in logs only; they belong in normalized tables.",
+    "repo_db_translation": "`ai_runs`, `model_cost`, `confidence`, `cascade_stage`, and `verified` should be stored alongside query and artifact metadata.",
+    "first_schema_objects": [
+      "ai_runs",
+      "model_costs",
+      "model_cascade_stages",
+      "semantic_operator_results",
+      "verification_events"
+    ],
+    "do_now": "Log every AI call with model, prompt hash, input row/object id, output hash, confidence, latency, token usage, price estimate, cascade stage, and verification status.",
+    "do_later": "Let the optimizer choose between small/fast model, large/oracle model, cached output, and human review based on cost and confidence.",
+    "watch_out": "Do not trust a semantic operator just because it returns an answer. Persist uncertainty and verification state so downstream artifacts can be rebuilt or invalidated.",
+    "priority": "P0"
+  },
+  {
+    "company": "AWS",
+    "theme": "PostgreSQL-compatible horizontal scale",
+    "adoptable_idea": "Start with normal PostgreSQL semantics, then add router, shard, replica, and distributed transaction concepts only when scale demands it.",
+    "key_papers": [
+      {
+        "title": "Aurora PostgreSQL Limitless Database: Building a Highly Scalable OLTP Database",
+        "url": "https://www.amazon.science/publications/aurora-postgresql-limitless-database-building-a-highly-scalable-oltp-database",
+        "type": "primary / Amazon Science",
+        "source_url": "https://www.amazon.science/publications/aurora-postgresql-limitless-database-building-a-highly-scalable-oltp-database",
+        "last_verified": "2026-06-29",
+        "source_type": "amazon_science",
+        "venue_or_track": "Amazon Science",
+        "doi_or_arxiv": "",
+        "claim_scope": "paper metadata"
+      },
+      {
+        "title": "Aurora PostgreSQL Limitless Database: Building a Highly Scalable OLTP Database",
+        "url": "https://2026.sigmod.org/sigmod_industry_papers.shtml",
+        "type": "SIGMOD 2026 Industry listing",
+        "source_url": "https://2026.sigmod.org/sigmod_industry_papers.shtml",
+        "last_verified": "2026-06-29",
+        "source_type": "sigmod_industry_listing",
+        "venue_or_track": "SIGMOD 2026 Industry",
+        "doi_or_arxiv": "",
+        "claim_scope": "accepted-paper listing"
+      }
+    ],
+    "why_it_matters": "Most repo metadata projects should begin with one reliable relational database. Horizontal scaling should preserve compatibility instead of forcing application-level sharding too early.",
+    "repo_db_translation": "Begin with single PostgreSQL. When repositories or organizations grow, introduce logical routers, project shards, replicas, and distributed transaction logs.",
+    "first_schema_objects": [
+      "router_rules",
+      "project_shards",
+      "replicas",
+      "global_transaction_log",
+      "shard_rebalancing_events"
+    ],
+    "do_now": "Design tables with stable IDs and clear shard keys, even before sharding is implemented.",
+    "do_later": "Route by organization, repository, package, or project boundary when metadata volume becomes large.",
+    "watch_out": "Avoid premature sharding. The first goal is correctness and compatibility; scale-out is a later migration path.",
+    "priority": "P1"
+  },
+  {
+    "company": "IBM",
+    "theme": "End-to-end benchmarking for RAG and embeddings",
+    "adoptable_idea": "Measure RAG as a whole system: embedding, indexing, retrieval, reranking, generation, latency, memory, update cost, and factual consistency.",
+    "key_papers": [
+      {
+        "title": "RAGPerf: An End-to-End Benchmarking Framework for Retrieval-Augmented Generation Systems",
+        "url": "https://arxiv.org/abs/2603.10765",
+        "type": "supporting benchmark / arXiv",
+        "source_url": "https://arxiv.org/abs/2603.10765",
+        "last_verified": "2026-06-29",
+        "source_type": "supporting_arxiv",
+        "venue_or_track": "arXiv",
+        "doi_or_arxiv": "arXiv:2603.10765",
+        "claim_scope": "paper metadata"
+      },
+      {
+        "title": "Fabric-X: Scaling Hyperledger Fabric for Asset Exchange",
+        "url": "https://2026.sigmod.org/sigmod_industry_papers.shtml",
+        "type": "SIGMOD 2026 Industry listing",
+        "source_url": "https://2026.sigmod.org/sigmod_industry_papers.shtml",
+        "last_verified": "2026-06-29",
+        "source_type": "sigmod_industry_listing",
+        "venue_or_track": "SIGMOD 2026 Industry",
+        "doi_or_arxiv": "",
+        "claim_scope": "accepted-paper listing"
+      }
+    ],
+    "why_it_matters": "A repository knowledge base is useful only if retrieval quality and system cost are measured together. Recall alone is not enough.",
+    "repo_db_translation": "Persist `rag_eval_runs`, `context_recall`, `latency`, `memory`, `update_cost`, `answer_groundedness`, and `factual_consistency`.",
+    "first_schema_objects": [
+      "rag_eval_runs",
+      "retrieval_metrics",
+      "generation_metrics",
+      "rerank_metrics",
+      "factuality_checks"
+    ],
+    "do_now": "Benchmark at least five dimensions: recall, answer quality, latency, memory, and index update cost.",
+    "do_later": "Run benchmark suites whenever embedding model, chunker, index, or reranker changes.",
+    "watch_out": "RAG quality can improve while latency or update cost becomes unacceptable. Track both quality and systems metrics.",
+    "priority": "P1"
+  },
+  {
     "company": "Neo4j",
     "theme": "Use graph databases when multi-hop queries become the bottleneck",
     "adoptable_idea": "Start with `graph_edges` in PostgreSQL, then mirror to Neo4j when multi-hop traversal and graph algorithms dominate workload cost.",
@@ -302,17 +440,35 @@
       {
         "title": "RIOT: Replicated Independently-Ordered Transactions",
         "url": "https://dl.acm.org/doi/10.1145/3788853.3803094",
-        "type": "ACM DOI"
+        "type": "ACM DOI",
+        "source_url": "https://dl.acm.org/doi/10.1145/3788853.3803094",
+        "last_verified": "2026-06-29",
+        "source_type": "acm_doi",
+        "venue_or_track": "ACM Digital Library",
+        "doi_or_arxiv": "10.1145/3788853.3803094",
+        "claim_scope": "paper metadata"
       },
       {
         "title": "Neo4j Research: RIOT",
         "url": "https://neo4j.com/research/",
-        "type": "company research page"
+        "type": "company research page",
+        "source_url": "https://neo4j.com/research/",
+        "last_verified": "2026-06-29",
+        "source_type": "company_research",
+        "venue_or_track": "Neo4j Research",
+        "doi_or_arxiv": "",
+        "claim_scope": "company research page"
       },
       {
         "title": "RIOT: Replicated Independently-Ordered Transactions",
         "url": "https://2026.sigmod.org/sigmod_industry_papers.shtml",
-        "type": "SIGMOD 2026 Industry listing"
+        "type": "SIGMOD 2026 Industry listing",
+        "source_url": "https://2026.sigmod.org/sigmod_industry_papers.shtml",
+        "last_verified": "2026-06-29",
+        "source_type": "sigmod_industry_listing",
+        "venue_or_track": "SIGMOD 2026 Industry",
+        "doi_or_arxiv": "",
+        "claim_scope": "accepted-paper listing"
       }
     ],
     "why_it_matters": "Repository graphs become valuable when questions require several hops: which tests cover a changed symbol, which docs mention it, which generated artifacts depend on it?",
@@ -336,12 +492,24 @@
       {
         "title": "Scalable Leader Leases For Multi Consensus Groups in CockroachDB",
         "url": "https://www.cockroachlabs.com/blog/distributed-database-leader-leases/",
-        "type": "company blog / paper announcement"
+        "type": "company blog / paper announcement",
+        "source_url": "https://www.cockroachlabs.com/blog/distributed-database-leader-leases/",
+        "last_verified": "2026-06-29",
+        "source_type": "company_blog",
+        "venue_or_track": "Cockroach Labs blog",
+        "doi_or_arxiv": "",
+        "claim_scope": "implementation interpretation source"
       },
       {
         "title": "Scalable Leader Leases For Multi Consensus Groups in CockroachDB",
         "url": "https://2026.sigmod.org/sigmod_industry_papers.shtml",
-        "type": "SIGMOD 2026 Industry listing"
+        "type": "SIGMOD 2026 Industry listing",
+        "source_url": "https://2026.sigmod.org/sigmod_industry_papers.shtml",
+        "last_verified": "2026-06-29",
+        "source_type": "sigmod_industry_listing",
+        "venue_or_track": "SIGMOD 2026 Industry",
+        "doi_or_arxiv": "",
+        "claim_scope": "accepted-paper listing"
       }
     ],
     "why_it_matters": "Metadata services can become critical infrastructure. Leaseholders, ranges, and consensus groups become relevant when many services read and update metadata concurrently.",
@@ -366,12 +534,24 @@
       {
         "title": "TDSQL-Boundless: A Distributed Database System for Large-scale Heterogeneous Multi-Table Workloads",
         "url": "https://dl.acm.org/doi/abs/10.1145/3788853.3803090",
-        "type": "ACM DOI"
+        "type": "ACM DOI",
+        "source_url": "https://dl.acm.org/doi/abs/10.1145/3788853.3803090",
+        "last_verified": "2026-06-29",
+        "source_type": "acm_doi",
+        "venue_or_track": "ACM Digital Library",
+        "doi_or_arxiv": "10.1145/3788853.3803090",
+        "claim_scope": "paper metadata"
       },
       {
         "title": "TDSQL-Boundless: A Distributed Database System for Large-scale Heterogeneous Multi-Table Workloads",
         "url": "https://2026.sigmod.org/sigmod_industry_papers.shtml",
-        "type": "SIGMOD 2026 Industry listing"
+        "type": "SIGMOD 2026 Industry listing",
+        "source_url": "https://2026.sigmod.org/sigmod_industry_papers.shtml",
+        "last_verified": "2026-06-29",
+        "source_type": "sigmod_industry_listing",
+        "venue_or_track": "SIGMOD 2026 Industry",
+        "doi_or_arxiv": "",
+        "claim_scope": "accepted-paper listing"
       }
     ],
     "why_it_matters": "Large monorepos look like heterogeneous database workloads: many schemas, many access patterns, many teams, and uneven hotspots.",

@@ -2,6 +2,20 @@
 
 This playbook turns the curated papers into a concrete repo/database management architecture.
 
+## Runnable starter
+
+The starter SQL is intentionally PostgreSQL-flavored and dependency-light.
+
+```sh
+make sql-check
+```
+
+Static SQL checks always run. To execute the schema, seed data, sample queries, and `EXPLAIN (ANALYZE, BUFFERS)` wrappers, point `DATABASE_URL` at an empty scratch PostgreSQL database before running `make sql-check`.
+
+The DDL includes both starter tables and thin future-extension tables. Future-extension tables keep the playbook, topic map, and catalog object names aligned, but the build order below still recommends implementing identity, artifacts, AI validation, query lineage, and RAG evaluation before distributed metadata operations.
+
+See `docs/database-optimizer-notes.md` for the baseline-first index and query review workflow.
+
 ## Stage 0 — Do not start with distributed systems
 
 Start with a single PostgreSQL database and a simple ingestion pipeline. The first objective is correctness: stable IDs, content hashes, lineage, and reproducible generated artifacts. Distributed SQL, Neo4j, and shard routers are later steps.
@@ -128,3 +142,11 @@ Rule: do not confuse schema complexity with distributed-system need. Normalize a
 5. `query_runs`, `lineage_edges`, `code_to_sql_edges`
 6. `vector_index_entries`, `rag_eval_runs`
 7. `project_shards`, `metadata_ranges`, `consensus_groups` only if needed
+
+## Example execution path
+
+1. Load `docs/repo-db-schema.sql` into a scratch PostgreSQL database.
+2. Load `examples/seed.sql`.
+3. Run `examples/queries.sql`.
+4. Run `examples/explain.sql` and save the plan output before changing indexes or query shape.
+5. Replace the seed rows with real repository ingestion once identity, artifact, AI, query, graph, and RAG records are available.

@@ -13,6 +13,8 @@ This document explains the conceptual database schema behind the curated paper m
 
 ## Entity groups
 
+`docs/repo-db-schema.sql` defines the entity groups below. Some tables are thin future-extension tables so that catalog object names, documentation, and SQL stay synchronized without implying that distributed systems or specialized graph/vector infrastructure should be adopted early.
+
 ### Repository identity
 
 - `files`: one logical file across renames.
@@ -61,6 +63,12 @@ This document explains the conceptual database schema behind the curated paper m
 - `metadata_ranges`: Cockroach-like metadata ranges.
 - `leaseholders`: current read/write authority for ranges.
 - `consensus_groups`: replicated groups and health.
+
+## Starter vs future-extension tables
+
+Starter tables are the first implementation target: `repositories`, file identity, `repo_nodes`, `graph_edges`, generated artifacts, AI runs, query/benchmark validation, vector index entries, and RAG evaluation records.
+
+Future-extension tables are included to keep the DDL executable and names traceable: router rules, replicas, transaction logs, range health, package groups, heterogeneous workloads, Neo4j mirror state, and multi-hop query logs. Treat them as schema placeholders until workload evidence requires them.
 
 ## Recommended IDs
 
