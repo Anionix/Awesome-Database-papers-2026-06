@@ -24,6 +24,7 @@ from catalog_contract import (
     VALID_PRIORITIES,
     is_valid_last_verified_date,
 )
+from sql_corpus import schema_identifiers, table_names
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 CATALOG_PATH = ROOT / "data" / "selected_papers.json"
@@ -256,34 +257,9 @@ def validate_sources(records: list[dict[str, Any]], errors: list[str]) -> None:
             error(errors, f"README missing company {record['company']}")
 
 
-def ddl_table_names(ddl: str) -> set[str]:
-    return set(re.findall(r"\bcreate\s+table\s+([a-z][a-z0-9_]*)\b", ddl, flags=re.IGNORECASE))
-
-
-def ddl_schema_identifiers(ddl: str) -> set[str]:
-    identifiers = set(ddl_table_names(ddl))
-    # LLM contract: catalog schema terms may name DDL tables or columns.
-    # Do not silently allow aliases like `model_cost` when the DDL says `model_costs`.
-    for _table_name, body in re.findall(
-        r"\bcreate\s+table\s+([a-z][a-z0-9_]*)\s*\((.*?)\n\);",
-        ddl,
-        flags=re.IGNORECASE | re.DOTALL,
-    ):
-        for raw_line in body.splitlines():
-            line = raw_line.split("--", 1)[0].strip().rstrip(",")
-            if not line:
-                continue
-            name = line.split(None, 1)[0]
-            if name in {"constraint", "primary", "foreign", "unique", "check"}:
-                continue
-            if re.fullmatch(r"[a-z][a-z0-9_]*", name):
-                identifiers.add(name)
-    return identifiers
-
-
 def validate_schema_objects(records: list[dict[str, Any]], errors: list[str]) -> None:
     ddl = (ROOT / "docs" / "repo-db-schema.sql").read_text(encoding="utf-8")
-    tables = ddl_table_names(ddl)
+    tables = table_names(ddl)
     # first_schema_objects names starter tables, not prose aliases.
     objects = {obj for record in records for obj in record["first_schema_objects"]}
     missing = sorted(objects - tables)
@@ -293,7 +269,9 @@ def validate_schema_objects(records: list[dict[str, Any]], errors: list[str]) ->
 
 def validate_catalog_schema_terms(records: list[dict[str, Any]], errors: list[str]) -> None:
     ddl = (ROOT / "docs" / "repo-db-schema.sql").read_text(encoding="utf-8")
-    identifiers = ddl_schema_identifiers(ddl)
+    # LLM contract: catalog schema terms may name DDL tables or columns.
+    # Do not silently allow aliases like `model_cost` when the DDL says `model_costs`.
+    identifiers = schema_identifiers(ddl)
     for record in records:
         label = record["company"]
         for field in SCHEMA_TERM_FIELDS:

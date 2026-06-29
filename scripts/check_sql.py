@@ -4,8 +4,9 @@
 from __future__ import annotations
 
 import pathlib
-import re
 import sys
+
+from sql_corpus import constraint_names, index_names, referenced_tables, table_names
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 DDL = ROOT / "docs" / "repo-db-schema.sql"
@@ -35,28 +36,6 @@ EXPECTED_CONSTRAINTS = {
 
 def read(path: pathlib.Path) -> str:
     return path.read_text(encoding="utf-8")
-
-
-def table_names(sql: str) -> set[str]:
-    return set(re.findall(r"\bcreate\s+table\s+([a-z][a-z0-9_]*)\b", sql, flags=re.IGNORECASE))
-
-
-def index_names(sql: str) -> set[str]:
-    return set(re.findall(r"\bcreate\s+(?:unique\s+)?index\s+([a-z][a-z0-9_]*)\b", sql, flags=re.IGNORECASE))
-
-
-def constraint_names(sql: str) -> set[str]:
-    return set(re.findall(r"\badd\s+constraint\s+([a-z][a-z0-9_]*)\b", sql, flags=re.IGNORECASE))
-
-
-def referenced_tables(sql: str) -> set[str]:
-    # Strip comments before looking for table references; prose examples in SQL
-    # comments should not affect the static check.
-    stripped_lines = []
-    for line in sql.splitlines():
-        stripped_lines.append(line.split("--", 1)[0])
-    stripped = "\n".join(stripped_lines)
-    return set(re.findall(r"\b(?:from|join|insert\s+into)\s+([a-z][a-z0-9_]*)\b", stripped, flags=re.IGNORECASE))
 
 
 def main() -> int:

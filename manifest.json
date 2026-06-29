@@ -67,6 +67,7 @@
     "scripts/catalog_contract.py",
     "scripts/check_sql.py",
     "scripts/generate_catalog.py",
+    "scripts/sql_corpus.py",
     "scripts/validate_catalog.py"
   ]
 }
