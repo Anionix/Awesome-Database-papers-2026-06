@@ -65,6 +65,7 @@
     "references.bib",
     "schemas/selected-paper.schema.json",
     "scripts/catalog_contract.py",
+    "scripts/catalog_surface.py",
     "scripts/check_sql.py",
     "scripts/generate_catalog.py",
     "scripts/sql_corpus.py",
