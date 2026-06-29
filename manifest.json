@@ -64,6 +64,7 @@
     "manifest.json",
     "references.bib",
     "schemas/selected-paper.schema.json",
+    "scripts/catalog_contract.py",
     "scripts/check_sql.py",
     "scripts/generate_catalog.py",
     "scripts/validate_catalog.py"

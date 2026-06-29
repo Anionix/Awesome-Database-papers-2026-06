@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import csv
-import datetime
 import importlib.util
 import json
 import pathlib
@@ -13,49 +12,22 @@ import subprocess
 import sys
 from typing import Any
 
+from catalog_contract import (
+    BACKTICK_IDENTIFIER_RE,
+    LAST_VERIFIED_RE,
+    REQUIRED_RECORD_FIELDS,
+    REQUIRED_SOURCE_FIELDS,
+    SCHEMA_OBJECT_RE,
+    SCHEMA_TERM_FIELDS,
+    URL_RE,
+    VALID_CLAIM_SCOPES,
+    VALID_PRIORITIES,
+    is_valid_last_verified_date,
+)
+
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 CATALOG_PATH = ROOT / "data" / "selected_papers.json"
 SCHEMA_PATH = ROOT / "schemas" / "selected-paper.schema.json"
-
-REQUIRED_RECORD_FIELDS = {
-    "company": str,
-    "theme": str,
-    "adoptable_idea": str,
-    "key_papers": list,
-    "why_it_matters": str,
-    "repo_db_translation": str,
-    "first_schema_objects": list,
-    "do_now": str,
-    "do_later": str,
-    "watch_out": str,
-    "priority": str,
-}
-
-# LLM contract: these constants intentionally mirror
-# schemas/selected-paper.schema.json so validation has no optional dependency.
-REQUIRED_SOURCE_FIELDS = {
-    "title": str,
-    "url": str,
-    "type": str,
-    "source_type": str,
-    "source_url": str,
-    "venue_or_track": str,
-    "doi_or_arxiv": str,
-    "last_verified": str,
-    "claim_scope": str,
-}
-
-VALID_PRIORITIES = {"P0", "P1", "P2"}
-VALID_CLAIM_SCOPES = {
-    "paper metadata",
-    "accepted-paper listing",
-    "company research page",
-    "implementation interpretation source",
-}
-SCHEMA_TERM_FIELDS = ("repo_db_translation",)
-URL_RE = re.compile(r"^https://")
-LAST_VERIFIED_RE = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$")
-BACKTICK_IDENTIFIER_RE = re.compile(r"`([a-z][a-z0-9_]*)`")
 
 
 def load_json(path: pathlib.Path) -> Any:
@@ -160,7 +132,7 @@ def validate_records(records: Any, errors: list[str]) -> None:
         if record.get("priority") not in VALID_PRIORITIES:
             error(errors, f"{label}: priority must be one of {sorted(VALID_PRIORITIES)}")
         for obj in record.get("first_schema_objects", []):
-            if not isinstance(obj, str) or not re.fullmatch(r"[a-z][a-z0-9_]*", obj):
+            if not isinstance(obj, str) or not SCHEMA_OBJECT_RE.fullmatch(obj):
                 error(errors, f"{label}: invalid schema object `{obj}`")
         for source in record.get("key_papers", []):
             if not isinstance(source, dict):
@@ -190,11 +162,8 @@ def validate_records(records: Any, errors: list[str]) -> None:
             if isinstance(last_verified, str):
                 if not LAST_VERIFIED_RE.fullmatch(last_verified):
                     error(errors, f"{label}: source `{source.get('title', '?')}` last_verified must use YYYY-MM-DD")
-                else:
-                    try:
-                        datetime.date.fromisoformat(last_verified)
-                    except ValueError:
-                        error(errors, f"{label}: source `{source.get('title', '?')}` last_verified must be a valid date")
+                elif not is_valid_last_verified_date(last_verified):
+                    error(errors, f"{label}: source `{source.get('title', '?')}` last_verified must be a valid date")
             claim_scope = source.get("claim_scope")
             if isinstance(claim_scope, str) and claim_scope not in VALID_CLAIM_SCOPES:
                 error(errors, f"{label}: source `{source.get('title', '?')}` claim_scope must be one of {sorted(VALID_CLAIM_SCOPES)}")
