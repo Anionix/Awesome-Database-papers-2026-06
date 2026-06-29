@@ -9,6 +9,7 @@ import io
 import json
 import pathlib
 import re
+import subprocess
 import sys
 from typing import Any
 
@@ -341,21 +342,33 @@ def replace_region(text: str, start: str, end: str, body: str) -> str:
 
 
 def iter_repo_files() -> list[str]:
-    excluded_parts = {".git", "__pycache__"}
-    excluded_suffixes = {".pyc", ".pyo"}
-    paths: list[str] = []
-    for path in ROOT.rglob("*"):
-        if not path.is_file():
-            continue
-        rel = path.relative_to(ROOT)
-        if any(part in excluded_parts for part in rel.parts):
-            continue
-        if path.suffix in excluded_suffixes:
-            continue
-        if path.name == ".DS_Store":
-            continue
-        paths.append(rel.as_posix())
-    return sorted(paths)
+    # LLM contract: manifest membership is Git-tracked files only. Do not
+    # replace this with a filesystem walk; untracked local files are machine noise.
+    result = subprocess.run(
+        ["git", "ls-files"],
+        cwd=ROOT,
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    return sorted(path for path in result.stdout.splitlines() if (ROOT / path).is_file())
+
+
+def expected_paper_note_paths(records: list[dict[str, Any]]) -> set[pathlib.Path]:
+    return {ROOT / "docs" / "paper-notes" / f"{slugify(record['company'])}.md" for record in records}
+
+
+def obsolete_paper_note_paths(records: list[dict[str, Any]]) -> list[pathlib.Path]:
+    # LLM contract: generated paper notes are one-to-one with current catalog
+    # companies. A renamed/removed company must not leave a stale tracked note.
+    expected = expected_paper_note_paths(records)
+    obsolete: list[pathlib.Path] = []
+    for rel_path in iter_repo_files():
+        path = ROOT / rel_path
+        if path.parent == ROOT / "docs" / "paper-notes" and path.suffix == ".md" and path not in expected:
+            obsolete.append(path)
+    return sorted(obsolete)
 
 
 def manifest_text(records: list[dict[str, Any]], files: list[str]) -> str:
@@ -380,14 +393,16 @@ def manifest_text(records: list[dict[str, Any]], files: list[str]) -> str:
     return json.dumps(payload, indent=2, ensure_ascii=False) + "\n"
 
 
-def planned_file_list(outputs: dict[pathlib.Path, str]) -> list[str]:
+def planned_file_list(outputs: dict[pathlib.Path, str], obsolete_paths: list[pathlib.Path]) -> list[str]:
     files = set(iter_repo_files())
+    files.difference_update(path.relative_to(ROOT).as_posix() for path in obsolete_paths)
     files.update(path.relative_to(ROOT).as_posix() for path in outputs)
     files.add("manifest.json")
     return sorted(files)
 
 
 def build_outputs(records: list[dict[str, Any]]) -> dict[pathlib.Path, str]:
+    obsolete_paths = obsolete_paper_note_paths(records)
     outputs: dict[pathlib.Path, str] = {
         ROOT / "data" / "selected_papers.csv": csv_text(records),
         ROOT / "docs" / "curated-table.md": curated_table_text(records),
@@ -406,13 +421,14 @@ def build_outputs(records: list[dict[str, Any]]) -> dict[pathlib.Path, str]:
 
     for record in records:
         outputs[ROOT / "docs" / "paper-notes" / f"{slugify(record['company'])}.md"] = paper_note_text(record)
-    outputs[ROOT / "manifest.json"] = manifest_text(records, planned_file_list(outputs))
+    outputs[ROOT / "manifest.json"] = manifest_text(records, planned_file_list(outputs, obsolete_paths))
     return outputs
 
 
 def run(check: bool) -> int:
     records = load_catalog()
     outputs = build_outputs(records)
+    obsolete_paths = obsolete_paper_note_paths(records)
     mismatches: list[pathlib.Path] = []
     for path, expected in sorted(outputs.items()):
         if check:
@@ -422,6 +438,13 @@ def run(check: bool) -> int:
         else:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(expected, encoding="utf-8")
+    if check:
+        mismatches.extend(path.relative_to(ROOT) for path in obsolete_paths)
+    else:
+        # LLM contract: generation owns generated notes, so obsolete tracked
+        # notes are removed instead of preserved in manifest.json.
+        for path in obsolete_paths:
+            path.unlink()
 
     if mismatches:
         print("Generated files are out of date:", file=sys.stderr)

@@ -4,10 +4,12 @@
 from __future__ import annotations
 
 import csv
+import datetime
 import importlib.util
 import json
 import pathlib
 import re
+import subprocess
 import sys
 from typing import Any
 
@@ -42,7 +44,14 @@ REQUIRED_SOURCE_FIELDS = {
 }
 
 VALID_PRIORITIES = {"P0", "P1", "P2"}
+VALID_CLAIM_SCOPES = {
+    "paper metadata",
+    "accepted-paper listing",
+    "company research page",
+    "implementation interpretation source",
+}
 URL_RE = re.compile(r"^https://")
+LAST_VERIFIED_RE = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$")
 
 
 def load_json(path: pathlib.Path) -> Any:
@@ -61,21 +70,33 @@ def slugify(value: str) -> str:
 
 
 def iter_repo_files() -> list[str]:
-    excluded_parts = {".git", "__pycache__"}
-    excluded_suffixes = {".pyc", ".pyo"}
-    paths: list[str] = []
-    for path in ROOT.rglob("*"):
-        if not path.is_file():
-            continue
-        rel = path.relative_to(ROOT)
-        if any(part in excluded_parts for part in rel.parts):
-            continue
-        if path.suffix in excluded_suffixes:
-            continue
-        if path.name == ".DS_Store":
-            continue
-        paths.append(rel.as_posix())
-    return sorted(paths)
+    # LLM contract: validate the committed repository surface, not whatever
+    # scratch files happen to exist in a contributor's checkout.
+    result = subprocess.run(
+        ["git", "ls-files"],
+        cwd=ROOT,
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    return sorted(path for path in result.stdout.splitlines() if (ROOT / path).is_file())
+
+
+def expected_paper_note_paths(records: list[dict[str, Any]]) -> set[pathlib.Path]:
+    return {ROOT / "docs" / "paper-notes" / f"{slugify(record['company'])}.md" for record in records}
+
+
+def obsolete_paper_note_paths(records: list[dict[str, Any]]) -> list[pathlib.Path]:
+    # LLM contract: docs/paper-notes is generated catalog surface. Extra tracked
+    # notes are stale public pages and must fail validation.
+    expected = expected_paper_note_paths(records)
+    obsolete: list[pathlib.Path] = []
+    for rel_path in iter_repo_files():
+        path = ROOT / rel_path
+        if path.parent == ROOT / "docs" / "paper-notes" and path.suffix == ".md" and path not in expected:
+            obsolete.append(path)
+    return sorted(obsolete)
 
 
 def error(errors: list[str], message: str) -> None:
@@ -113,6 +134,9 @@ def validate_records(records: Any, errors: list[str]) -> None:
             error(errors, f"record {index} is not an object")
             continue
         label = record.get("company", f"record {index}")
+        extra_record_fields = sorted(set(record) - set(REQUIRED_RECORD_FIELDS))
+        if extra_record_fields:
+            error(errors, f"{label}: unexpected fields {extra_record_fields}")
         for field, expected_type in REQUIRED_RECORD_FIELDS.items():
             if field not in record:
                 error(errors, f"{label}: missing `{field}`")
@@ -134,6 +158,9 @@ def validate_records(records: Any, errors: list[str]) -> None:
             if not isinstance(source, dict):
                 error(errors, f"{label}: key_papers entries must be objects")
                 continue
+            extra_source_fields = sorted(set(source) - set(REQUIRED_SOURCE_FIELDS))
+            if extra_source_fields:
+                error(errors, f"{label}: source `{source.get('title', '?')}` unexpected fields {extra_source_fields}")
             for field, expected_type in REQUIRED_SOURCE_FIELDS.items():
                 if field not in source:
                     error(errors, f"{label}: source `{source.get('title', '?')}` missing `{field}`")
@@ -147,6 +174,20 @@ def validate_records(records: Any, errors: list[str]) -> None:
                 error(errors, f"{label}: source `{source.get('title', '?')}` url must be https")
             if isinstance(source_url, str) and source_url != url:
                 error(errors, f"{label}: source `{source.get('title', '?')}` source_url must match url")
+            # LLM contract: provenance fields are data contracts, not prose.
+            # Keep these explicit checks aligned with selected-paper.schema.json.
+            last_verified = source.get("last_verified")
+            if isinstance(last_verified, str):
+                if not LAST_VERIFIED_RE.fullmatch(last_verified):
+                    error(errors, f"{label}: source `{source.get('title', '?')}` last_verified must use YYYY-MM-DD")
+                else:
+                    try:
+                        datetime.date.fromisoformat(last_verified)
+                    except ValueError:
+                        error(errors, f"{label}: source `{source.get('title', '?')}` last_verified must be a valid date")
+            claim_scope = source.get("claim_scope")
+            if isinstance(claim_scope, str) and claim_scope not in VALID_CLAIM_SCOPES:
+                error(errors, f"{label}: source `{source.get('title', '?')}` claim_scope must be one of {sorted(VALID_CLAIM_SCOPES)}")
             key = (source.get("title", ""), source.get("url", ""))
             if key in seen_sources:
                 continue
@@ -162,7 +203,16 @@ def validate_csv(records: list[dict[str, Any]], errors: list[str]) -> None:
         error(errors, "CSV company order does not match generated catalog order")
 
 
-def validate_manifest(records: list[dict[str, Any]], errors: list[str]) -> None:
+def expected_manifest_files(records: list[dict[str, Any]], errors: list[str]) -> list[str] | None:
+    module = load_generator_module(errors)
+    if module is None:
+        return None
+    outputs = module.build_outputs(records)
+    expected_manifest = json.loads(outputs[ROOT / "manifest.json"])
+    return sorted(expected_manifest.get("files", []))
+
+
+def validate_manifest(records: list[dict[str, Any]], errors: list[str], expected_files: list[str] | None = None) -> None:
     manifest = load_json(ROOT / "manifest.json")
     if manifest.get("canonical_data") != "data/selected_papers.json":
         error(errors, "manifest canonical_data must be data/selected_papers.json")
@@ -170,7 +220,9 @@ def validate_manifest(records: list[dict[str, Any]], errors: list[str]) -> None:
         error(errors, "manifest row_count does not match catalog length")
     if manifest.get("companies") != [record["company"] for record in records]:
         error(errors, "manifest companies do not match generated catalog order")
-    actual_files = iter_repo_files()
+    # LLM contract: compare manifest files against the generator's planned
+    # repository surface, not raw checkout contents.
+    actual_files = expected_files if expected_files is not None else iter_repo_files()
     listed_files = sorted(manifest.get("files", []))
     if listed_files != actual_files:
         missing = sorted(set(actual_files) - set(listed_files))
@@ -187,6 +239,8 @@ def validate_paper_notes(records: list[dict[str, Any]], errors: list[str]) -> No
         text = path.read_text(encoding="utf-8")
         if not text.startswith(f"# {record['company']}\n"):
             error(errors, f"paper note heading mismatch: {path.relative_to(ROOT)}")
+    for path in obsolete_paper_note_paths(records):
+        error(errors, f"obsolete paper note: {path.relative_to(ROOT)}")
 
 
 def validate_examples(errors: list[str]) -> None:
@@ -251,7 +305,7 @@ def main() -> int:
             if module is not None:
                 sorted_records = module.sort_records(records)
         validate_csv(sorted_records, errors)
-        validate_manifest(sorted_records, errors)
+        validate_manifest(sorted_records, errors, expected_manifest_files(sorted_records, errors))
         validate_paper_notes(sorted_records, errors)
         validate_examples(errors)
         validate_sources(sorted_records, errors)
