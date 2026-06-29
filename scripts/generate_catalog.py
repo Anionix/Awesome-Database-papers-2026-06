@@ -13,10 +13,10 @@ import subprocess
 import sys
 from typing import Any
 
+from catalog_contract import priority_rank, source_label
+
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 CATALOG_PATH = ROOT / "data" / "selected_papers.json"
-
-PRIORITY_ORDER = {"P0": 0, "P1": 1, "P2": 2}
 
 TOPIC_DECISION_RULES = {
     "Snowflake": "Store every AI operation as queryable data.",
@@ -53,17 +53,6 @@ PRACTICAL_GROUPS = {
     ],
 }
 
-SOURCE_TYPE_LABELS = {
-    "acm_doi": "ACM DOI",
-    "amazon_science": "primary / Amazon Science",
-    "arxiv": "primary / arXiv",
-    "company_blog": "company blog / paper announcement",
-    "company_research": "company research page",
-    "google_research": "primary / Google Research",
-    "sigmod_industry_listing": "SIGMOD 2026 Industry listing",
-    "supporting_arxiv": "supporting benchmark / arXiv",
-}
-
 
 def sort_records(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
     # LLM contract: this is the canonical generated-view order. Validators
@@ -71,7 +60,7 @@ def sort_records(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return sorted(
         records,
         key=lambda row: (
-            PRIORITY_ORDER.get(row.get("priority"), 99),
+            priority_rank(row.get("priority")),
             row.get("company", ""),
             row.get("theme", ""),
         ),
@@ -92,14 +81,6 @@ def slugify(value: str) -> str:
         .replace(" ", "-")
         .replace("_", "-")
     )
-
-
-def source_label(source: dict[str, Any]) -> str:
-    # Prefer the human-facing `type` value because generated docs expose it.
-    # `source_type` remains the machine-readable provenance classifier.
-    if source.get("type"):
-        return str(source["type"])
-    return SOURCE_TYPE_LABELS.get(str(source.get("source_type", "")), str(source.get("source_type", "")))
 
 
 def source_link(source: dict[str, Any], include_label: bool = False) -> str:
